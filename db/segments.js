@@ -29,7 +29,7 @@ const segments = async () => {
                              WHERE  status.NAME LIKE 'active' ) 
             ORDER BY  vs.priority DESC, 
                       dimension DESC 
-            LIMIT 3
+            LIMIT 5
         `)
         await dbMysql.end()
 
