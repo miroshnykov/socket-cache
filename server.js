@@ -7,12 +7,26 @@ const server = http.createServer(app);
 const io = socketIO(server)
 const {getDataCache, setDataCache} = require('./lib/redis')
 const {adUnits} = require('./db/adUnits')
+const {cities} = require('./db/cities')
+const {lpFormat} = require('./lib/lpFormat')
+const {segmentsFormat} = require('./lib/segmentsFormat')
+const {lpSegmentMerge} = require('./lib/helper')
 
 app.get('/health', (req, res, next) => {
     res.send('Ok')
 })
 
 app.get('/test', async (req, res, next) => {
+
+    let response1 = {}
+    let segmentsData = await segmentsFormat()
+    let lpData = await lpFormat()
+    let recipe = lpSegmentMerge(segmentsData,lpData)
+    response1.segmentsData = segmentsData
+    response1.lpData = lpData
+    response1.recip = recipe
+    res.send(response1)
+    return
 
     console.time('ad-units')
     let response = {}
@@ -67,9 +81,26 @@ io.on('connection', async (socket) => {
 
         clients.push(socket.id)
         // let blockedIpData = await blockedIp.getAllBlockedIp()
-        let adUnitsCache = await getDataCache('ad-units')
+        let adUnitsCache = await getDataCache('ad-units') || []
+
+        if (adUnitsCache.length === 0) {
+            console.log('get from DB adUnits')
+            adUnitsCache = await adUnits()
+            setDataCache('ad-units', adUnitsCache)
+
+        }
+
+        let citiesCache = await getDataCache('cities') || []
+        if (citiesCache.length === 0) {
+            console.log('get from DB cities')
+            citiesCache = await cities()
+            setDataCache('cities', citiesCache)
+
+        }
+        // console.log('citiesCache:',citiesCache)
         console.log(`New client just connected: ${socket.id} `);
         io.to(socket.id).emit("adUnits", adUnitsCache)
+        io.to(socket.id).emit("cities", citiesCache)
     }
     //
     setInterval(async () => {
