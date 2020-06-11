@@ -77,10 +77,13 @@ let clients = []
 
 io.on('connection', async (socket) => {
     console.log(`\nFlow Rotator instance connected, socket.id:{ ${socket.id} }`);
+
+    let recipeCacheInterval = []
     socket.on('disconnect', () => {
-        clients.splice(clients.indexOf(socket.id,1))
+        clearInterval(recipeCacheInterval[socket.id]);
+        clients.splice(clients.indexOf(socket.id, 1))
         console.log(`disconnect ${socket.id}, Count of client: ${clients.length} `);
-        console.log(`disconnect clients:`,clients);
+        console.log(`disconnect clients:`, clients);
     })
 
     socket.on('checksum', (data) => {
@@ -88,64 +91,8 @@ io.on('connection', async (socket) => {
         // console.log(`checksum ${data} `);
         // console.log(`disconnect clients:`,clients);
     })
-    if (!clients.includes(socket.id)) {
-
-
-        if (clients.length < 30) {
-            clients.push(socket.id)
-            console.log(`Count of clients: ${clients.length} limit 30`)
-            // let blockedIpData = await blockedIp.getAllBlockedIp()
-            // let adUnitsCache = await getDataCache('ad-units') || []
-            //
-            // if (adUnitsCache.length === 0) {
-            //     console.log('get from DB adUnits')
-            //     adUnitsCache = await adUnits()
-            //     setDataCache('ad-units', adUnitsCache)
-            //
-            // }
-            //
-            //
-            // let citiesCache = await getDataCache('cities') || []
-            // if (citiesCache.length === 0) {
-            //     console.log('get from DB cities')
-            //     citiesCache = await cities()
-            //     setDataCache('cities', citiesCache)
-            //
-            // }
-
-            let recipeCache = await getDataCache('recipe') || []
-            if (recipeCache.length === 0) {
-                let segmentsData = await segmentsFormat()
-                let lpData = await lpFormat()
-                recipeCache = lpSegmentMerge(segmentsData, lpData)
-                setDataCache('recipe', recipeCache)
-                console.log('set recipe to Cache')
-            }
-            // response1.segmentsData = segmentsData
-            // response1.lpData = lpData
-
-            // console.log('citiesCache:',citiesCache)
-            console.log(`New client just connected: ${socket.id} `);
-            console.log(`Clients: ${JSON.stringify(clients)} `);
-            await waitFor(2000)
-            // io.to(socket.id).emit("adUnits", adUnitsCache)
-            // io.to(socket.id).emit("cities", citiesCache)
-            io.to(socket.id).emit("recipe", recipeCache)
-        }
-    }
-    //
-    setInterval(async () => {
-
-        // let adUnitsDB = await adUnits()
-        // let adUnitsCache = await getDataCache('ad-units')
-        //
-        // if (JSON.stringify(adUnitsDB) !== JSON.stringify(adUnitsCache)) {
-        //     console.log(`\nData was changed in DB:${JSON.stringify(adUnitsDB)}, send to Flow Rotator`)
-        //     setDataCache('ad-units', adUnitsDB)
-        //     console.log(`Count of client: ${clients.length},  clients : ${JSON.stringify(clients)}, send to socket.id:${socket.id} \n`)
-        //     io.sockets.emit("adUnits", adUnitsDB);
-        // }
-
+    const sendRecipeCache = async () => {
+        console.log('\n sendRecipeCache')
         let recipeCache = await getDataCache('recipe') || []
 
         let segmentsData = await segmentsFormat()
@@ -155,21 +102,36 @@ io.on('connection', async (socket) => {
         if (JSON.stringify(recipeDb) !== JSON.stringify(recipeCache)) {
             console.log(`\nrecipe was changed in DB:${JSON.stringify(recipeDb)}, send to Flow Rotator`)
             setDataCache('recipe', recipeDb)
-            io.sockets.emit("recipe", recipeDb)
+            io.sockets.emit("recipeCache", recipeDb)
         }
-        //
-        // let adUnitsDB = await adUnits()
-        // let adUnitsCache = await getDataCache('ad-units')
-        //
-        // if (JSON.stringify(adUnitsDB) !== JSON.stringify(adUnitsCache)) {
-        //     console.log(`\nData was changed in DB:${JSON.stringify(adUnitsDB)}, send to Flow Rotator`)
-        //     setDataCache('ad-units', adUnitsDB)
-        //     console.log(`Count of client: ${clients.length},  clients : ${JSON.stringify(clients)}, send to socket.id:${socket.id} \n`)
-        //     io.sockets.emit("adUnits", adUnitsDB);
-        // }
+    }
 
-    }, 200000) //1 min   config.flowRotator.interval
+    recipeCacheInterval[socket.id] = setInterval(sendRecipeCache, 20000);
+
+    if (!clients.includes(socket.id)) {
+
+
+        if (clients.length < 30) {
+            clients.push(socket.id)
+            console.log(`Count of clients: ${clients.length} limit 30`)
+
+            let recipeCache = await getDataCache('recipe') || []
+            if (recipeCache.length === 0) {
+                let segmentsData = await segmentsFormat()
+                let lpData = await lpFormat()
+                recipeCache = lpSegmentMerge(segmentsData, lpData)
+                setDataCache('recipe', recipeCache)
+                console.log('set recipe to Cache')
+            }
+            console.log(`New client just connected: ${socket.id} `);
+            console.log(`Clients: ${JSON.stringify(clients)} `);
+            await waitFor(2000)
+            io.to(socket.id).emit("recipeCache", recipeCache)
+        }
+    }
+
 })
+
 
 server.listen({port: config.port}, () =>
     console.log(`\n🚀\x1b[35m Server ready at http://localhost:${config.port} \x1b[0m \n`)

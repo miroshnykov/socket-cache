@@ -30,7 +30,7 @@ const lp = async () => {
         `)
         await dbMysql.end()
 
-        console.log(`\nget all segments count: ${result.length}`)
+        // console.log(`\nget all segments count: ${result.length}`)
         return result
     } catch (e) {
         console.log(e)
