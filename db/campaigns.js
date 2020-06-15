@@ -1,20 +1,20 @@
 let dbMysql = require('./mysqlAdcenterDb').get()
-const {adUnitsFormat} = require('../lib/helper')
+const {campaignsFormat} = require('../lib/helper')
 
-const adUnits = async () => {
+const campaigns = async () => {
 
     try {
         let result = await dbMysql.query(` 
-            select id,name from ad_units limit 10
+            SELECT id, name FROM campaigns where status = 'active'
         `)
         await dbMysql.end()
         // console.log(`\nget all adUnits count: ${result.length}`)
-        return await adUnitsFormat(result)
+        return await campaignsFormat(result)
     } catch (e) {
         console.log(e)
     }
 }
 
 module.exports = {
-    adUnits,
+    campaigns,
 }

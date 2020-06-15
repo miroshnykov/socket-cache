@@ -11,6 +11,7 @@ const {cities} = require('./db/cities')
 const {lpFormat} = require('./lib/lpFormat')
 const {segmentsFormat} = require('./lib/segmentsFormat')
 const {lpSegmentMerge} = require('./lib/helper')
+const {recipeDb} = require('./lib/recipeData')
 
 app.get('/health', (req, res, next) => {
     res.send('Ok')
@@ -18,19 +19,23 @@ app.get('/health', (req, res, next) => {
 
 app.get('/test', async (req, res, next) => {
 
+    const {advertisersProducts} = require('./db/advertisersProducts')
 
-    let recipeCache = await getDataCache('recipe') || []
-    if (recipeCache.length === 0) {
-        let segmentsData = await segmentsFormat()
-        let lpData = await lpFormat()
-        recipeCache = lpSegmentMerge(segmentsData, lpData)
-        setDataCache('recipe', recipeCache)
-        console.log('set recipe to Cache')
-    }
+
+    // let recipeCache = await getDataCache('recipe') || []
+    // if (recipeCache.length === 0) {
+    //     let segmentsData = await segmentsFormat()
+    //     let lpData = await lpFormat()
+    //     recipeCache = lpSegmentMerge(segmentsData, lpData)
+    //     setDataCache('recipe', recipeCache)
+    //     console.log('set recipe to Cache')
+    // }
     let response1 = {}
+    let rs =  await advertisersProducts()
+    console.log(rs)
+    response1.advertisersProducts = rs
     // response1.segmentsData = segmentsData
     // response1.lpData = lpData
-    response1.recipe = recipeCache
     res.send(response1)
     return
 
@@ -72,7 +77,9 @@ app.get('/test', async (req, res, next) => {
     res.send(response)
 })
 
-
+const LIMIT_CLIENTS = 30
+const {currentTime} = require('./lib/helper')
+let {hash} = require('./lib/hash')
 let clients = []
 
 io.on('connection', async (socket) => {
@@ -86,56 +93,87 @@ io.on('connection', async (socket) => {
         console.log(`disconnect clients:`, clients);
     })
 
-    socket.on('checksum', (data) => {
+    socket.on('checkHash', async (hashFr) => {
+        console.log('checkHash:', hashFr)
+        let recipeCache = await getDataCache('recipe') || []
+        console.log('recipeCacheOrigin', recipeCache.hash)
+        if (recipeCache.hash === hashFr) {
+            console.log('hash the same ')
+            return
+        }
+        console.log('hash different send to socket id ', socket.id)
+        io.to(socket.id).emit("recipeCache", recipeCache)
         // clients.splice(clients.indexOf(socket.id,1))
         // console.log(`checksum ${data} `);
         // console.log(`disconnect clients:`,clients);
     })
-    const sendRecipeCache = async () => {
-        console.log('\n sendRecipeCache')
+
+    const sendRecipeCache = async (clients, socketId) => {
+
         let recipeCache = await getDataCache('recipe') || []
+        let recipeDataDb = await recipeDb()
+        console.log(' *** socketId', socketId)
+        if (JSON.stringify(recipeDataDb.recipe) !== JSON.stringify(recipeCache.recipe) ||
+            JSON.stringify(recipeDataDb.maps) !== JSON.stringify(recipeCache.maps)
+        ) {
+            console.log(`\nrecipe maps was changed in DB:${JSON.stringify(Object.keys(recipeDataDb.maps))}, send to Flow Rotator`)
+            // console.log(`\nrecipe was changed in DB:${JSON.stringify(Object.entries(recipeDataDb.recipe).length)}, send to Flow Rotator`)
+            console.log(`\nsendRecipeCache socket:${socket.id}`)
+            console.log(`Count of clients: ${clients.length}`)
 
-        let segmentsData = await segmentsFormat()
-        let lpData = await lpFormat()
-        let recipeDb = lpSegmentMerge(segmentsData, lpData)
+            recipeDataDb.hash = hash()
+            setDataCache('recipe', recipeDataDb)
 
-        if (JSON.stringify(recipeDb) !== JSON.stringify(recipeCache)) {
-            console.log(`\nrecipe was changed in DB:${JSON.stringify(recipeDb)}, send to Flow Rotator`)
-            setDataCache('recipe', recipeDb)
-            io.sockets.emit("recipeCache", recipeDb)
+            io.sockets.emit("recipeCache", recipeDataDb)
+        } else {
+            console.log(`Data in DB does not change, current connected clients: ${clients.length}, time ${currentTime()}`)
         }
     }
 
-    recipeCacheInterval[socket.id] = setInterval(sendRecipeCache, 20000);
+    recipeCacheInterval[socket.id] = setInterval(sendRecipeCache, 2000, clients, socket.id)
 
     if (!clients.includes(socket.id)) {
 
 
-        if (clients.length < 30) {
+        if (clients.length < LIMIT_CLIENTS) {
             clients.push(socket.id)
-            console.log(`Count of clients: ${clients.length} limit 30`)
+            console.log(`Count of clients: ${clients.length} limit ${LIMIT_CLIENTS}`)
 
             let recipeCache = await getDataCache('recipe') || []
+            let recipeDbTmp
             if (recipeCache.length === 0) {
-                let segmentsData = await segmentsFormat()
-                let lpData = await lpFormat()
-                recipeCache = lpSegmentMerge(segmentsData, lpData)
-                setDataCache('recipe', recipeCache)
-                console.log('set recipe to Cache')
+                recipeDbTmp = await recipeDb()
+                recipeDbTmp.hash = hash()
+                setDataCache('recipe', recipeDbTmp)
+                console.log(`set recipe to Cache hash:${recipeDbTmp.hash}`)
             }
             console.log(`New client just connected: ${socket.id} `);
             console.log(`Clients: ${JSON.stringify(clients)} `);
             await waitFor(2000)
-            io.to(socket.id).emit("recipeCache", recipeCache)
+            // console.log(recipeCache.length === 0 && tmp || recipeCache)
+            io.to(socket.id).emit("recipeCache", recipeCache.length === 0 && recipeDbTmp || recipeCache)
         }
     }
 
 })
 
+io.on('connect', async (socket) => {
+    console.log(`Connect ${socket.id}, Clients: ${JSON.stringify(clients)} `);
+    console.log(`Count of clients: ${clients.length} limit 30`)
+})
+
+io.on('disconnect', async (socket) => {
+    console.log('  !!!!!!!!!!!!!! disconnect', socket.id)
+})
 
 server.listen({port: config.port}, () =>
     console.log(`\n🚀\x1b[35m Server ready at http://localhost:${config.port} \x1b[0m \n`)
 )
+
+setInterval(() => {
+    console.log('\n')
+
+}, 19000)
 
 
 const waitFor = delay => new Promise(resolve => setTimeout(resolve, delay))

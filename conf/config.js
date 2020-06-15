@@ -19,6 +19,21 @@ config.db = {
     }
 }
 
+config.api = {
+    randomsites: {
+        host: 'http://admin-wt.jomediainc.com',
+        path: '/api/getRandomSites.php'
+    },
+    devices: {
+        host: 'http://admin.ad-center.com',
+        path: '/api/getDeviceGroups.php'
+    },
+    OSes: {
+        host: 'http://admin.ad-center.com',
+        path: '/api/getOsGroups.php'
+    }
+}
+
 config.segment = {
     location: {
         country: 1,
