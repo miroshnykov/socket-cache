@@ -16,7 +16,7 @@ const cities = async () => {
         `)
         await dbMysql.end()
 
-        console.log(`\nget all cities count: ${result.length}`)
+        // console.log(`\nget all cities count: ${result.length}`)
         return result
     } catch (e) {
         console.log(e)
