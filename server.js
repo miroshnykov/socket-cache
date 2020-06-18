@@ -115,7 +115,7 @@ io.on('connection', async (socket) => {
         console.log(` *** size Of size Db Recipe: { ${sizeOfrecipeDataDbRecipe} }`)
         console.log(` *** size Of size Db Maps: { ${sizeOfrecipeDataDbMaps} }`)
 
-        if (recipeCache.length !== 0){
+        if (recipeCache.length !== 0) {
             let sizeOfCacheRecipe = await memorySizeOf(recipeCache.recipe)
             let sizeOfCacheMaps = await memorySizeOf(recipeCache.maps)
             console.log(` *** size Of size Cache Recipe: { ${sizeOfCacheRecipe} }`)
@@ -125,9 +125,9 @@ io.on('connection', async (socket) => {
         }
 
         console.log(' *** socketId', socketId)
-        if (JSON.stringify(recipeDataDb.recipe) !== JSON.stringify(recipeCache.recipe) ||
-            JSON.stringify(recipeDataDb.maps) !== JSON.stringify(recipeCache.maps)
-        ) {
+        //
+        //JSON.stringify(recipeDataDb.maps) !== JSON.stringify(recipeCache.maps)
+        if (JSON.stringify(recipeDataDb.recipe) !== JSON.stringify(recipeCache.recipe)) {
             console.log(`\nrecipe maps was changed in DB:${JSON.stringify(Object.keys(recipeDataDb.maps))}, send to Flow Rotator`)
             // console.log(`\nrecipe was changed in DB:${JSON.stringify(Object.entries(recipeDataDb.recipe).length)}, send to Flow Rotator`)
             console.log(`\nsendRecipeCache socket:${socket.id}`)
