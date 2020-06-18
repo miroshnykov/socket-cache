@@ -5,10 +5,10 @@ module.exports = {
 
     get: () => {
         if (!mysqlAdcenterDb) {
-            console.log(`\n \x1b[35m First init adcenter DB \x1b[0m`)
-            console.log(config.db.maxmind)
+            console.log(`\n\x1b[35mFirst init maxmind DB \x1b[0m`)
             const {host, user, password, port} = config.db.adcenter
             const {database} = config.db.maxmind
+            console.log(`host:{ ${host} },user:{ ${user} },database:{ ${database} }`)
             let mysqlConfig = {
                 host: host,
                 database: database,
