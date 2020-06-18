@@ -5,7 +5,7 @@ const creatives = async () => {
 
     try {
         let result = await dbMysql.query(` 
-            select id, name from creatives
+            select id, name from creatives  WHERE status = 'active'
         `)
         await dbMysql.end()
         // console.log(`\nget all adUnits count: ${result.length}`)

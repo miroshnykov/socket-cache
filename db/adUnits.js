@@ -5,7 +5,7 @@ const adUnits = async () => {
 
     try {
         let result = await dbMysql.query(` 
-            select id,name from ad_units limit 10
+            select id,name from ad_units 
         `)
         await dbMysql.end()
         // console.log(`\nget all adUnits count: ${result.length}`)

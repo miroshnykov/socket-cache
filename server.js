@@ -7,10 +7,7 @@ const server = http.createServer(app);
 const io = socketIO(server)
 const {getDataCache, setDataCache} = require('./lib/redis')
 const {adUnits} = require('./db/adUnits')
-const {cities} = require('./db/cities')
-const {lpFormat} = require('./lib/lpFormat')
-const {segmentsFormat} = require('./lib/segmentsFormat')
-const {lpSegmentMerge} = require('./lib/helper')
+const {memorySizeOf} = require('./lib/helper')
 const {recipeDb} = require('./lib/recipeData')
 
 app.get('/health', (req, res, next) => {
@@ -31,7 +28,7 @@ app.get('/test', async (req, res, next) => {
     //     console.log('set recipe to Cache')
     // }
     let response1 = {}
-    let rs =  await advertisersProducts()
+    let rs = await advertisersProducts()
     console.log(rs)
     response1.advertisersProducts = rs
     // response1.segmentsData = segmentsData
@@ -101,7 +98,7 @@ io.on('connection', async (socket) => {
             console.log(`hash the same, socketId  { ${socket.id} } `)
             return
         }
-        console.log(`hash different send to socket id { ${ socket.id} }`)
+        console.log(`hash different send to socket id { ${socket.id} }`)
         io.to(socket.id).emit("recipeCache", recipeCache)
         // clients.splice(clients.indexOf(socket.id,1))
         // console.log(`checksum ${data} `);
@@ -112,6 +109,12 @@ io.on('connection', async (socket) => {
 
         let recipeCache = await getDataCache('recipe') || []
         let recipeDataDb = await recipeDb()
+        let sizeOfrecipeDataDb = await memorySizeOf(recipeDataDb)
+        let sizeOfclients = await memorySizeOf(clients)
+        let sizeOfrecipeCache = await memorySizeOf(recipeCache)
+        console.log(` *** size Of recipeDataDb: { ${sizeOfrecipeDataDb} }`)
+        console.log(` *** size Of recipeCache: { ${sizeOfrecipeCache} }`)
+        console.log(` *** size Of clients: { ${sizeOfclients} }`)
         console.log(' *** socketId', socketId)
         if (JSON.stringify(recipeDataDb.recipe) !== JSON.stringify(recipeCache.recipe) ||
             JSON.stringify(recipeDataDb.maps) !== JSON.stringify(recipeCache.maps)
@@ -139,6 +142,7 @@ io.on('connection', async (socket) => {
             clients.push(socket.id)
             console.log(`Count of clients: ${clients.length} limit ${LIMIT_CLIENTS}`)
 
+            return
             let recipeCache = await getDataCache('recipe') || []
             let recipeDbTmp
             if (recipeCache.length === 0) {

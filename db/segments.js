@@ -29,8 +29,7 @@ const segments = async () => {
                              WHERE  status.NAME LIKE 'active' ) 
             ORDER BY  vs.priority DESC, 
                       dimension DESC 
-            LIMIT 5
-        `)
+       `)
         await dbMysql.end()
 
         // console.log(`\nget all segments count: ${result.length}`)

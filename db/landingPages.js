@@ -26,7 +26,7 @@ const lp = async () => {
                               JOIN   status 
                               ON     status.id = v_segment.status_id 
                               WHERE  status.NAME LIKE 'active' ) 
-            ORDER BY   vs.priority DESC limit 5
+            ORDER BY   vs.priority DESC 
         `)
         await dbMysql.end()
 
