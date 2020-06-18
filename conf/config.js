@@ -11,10 +11,6 @@ config.db = {
         database: ''
     },
     maxmind: {
-        host: '',
-        user: '',
-        port: 3306,
-        password: '',
         database: ''
     }
 }
