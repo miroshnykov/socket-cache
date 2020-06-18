@@ -94,14 +94,14 @@ io.on('connection', async (socket) => {
     })
 
     socket.on('checkHash', async (hashFr) => {
-        console.log('checkHash:', hashFr)
+        console.log('\n checkHash:', hashFr)
         let recipeCache = await getDataCache('recipe') || []
         console.log('recipeCacheOrigin', recipeCache.hash)
         if (recipeCache.hash === hashFr) {
-            console.log('hash the same ')
+            console.log(`hash the same, socketId  { ${socket.id} } `)
             return
         }
-        console.log('hash different send to socket id ', socket.id)
+        console.log(`hash different send to socket id { ${ socket.id} }`)
         io.to(socket.id).emit("recipeCache", recipeCache)
         // clients.splice(clients.indexOf(socket.id,1))
         // console.log(`checksum ${data} `);
@@ -130,7 +130,7 @@ io.on('connection', async (socket) => {
         }
     }
 
-    recipeCacheInterval[socket.id] = setInterval(sendRecipeCache, 2000, clients, socket.id)
+    recipeCacheInterval[socket.id] = setInterval(sendRecipeCache, 20000, clients, socket.id)
 
     if (!clients.includes(socket.id)) {
 
