@@ -109,12 +109,21 @@ io.on('connection', async (socket) => {
 
         let recipeCache = await getDataCache('recipe') || []
         let recipeDataDb = await recipeDb()
-        let sizeOfrecipeDataDb = await memorySizeOf(recipeDataDb)
-        let sizeOfclients = await memorySizeOf(clients)
-        let sizeOfrecipeCache = await memorySizeOf(recipeCache)
-        console.log(` *** size Of recipeDataDb: { ${sizeOfrecipeDataDb} }`)
-        console.log(` *** size Of recipeCache: { ${sizeOfrecipeCache} }`)
-        console.log(` *** size Of clients: { ${sizeOfclients} }`)
+        let sizeOfrecipeDataDbRecipe = await memorySizeOf(recipeDataDb.recipe)
+        let sizeOfrecipeDataDbMaps = await memorySizeOf(recipeDataDb.maps)
+
+        console.log(` *** size Of size Db Recipe: { ${sizeOfrecipeDataDbRecipe} }`)
+        console.log(` *** size Of size Db Maps: { ${sizeOfrecipeDataDbMaps} }`)
+
+        if (recipeCache.length !== 0){
+            let sizeOfCacheRecipe = await memorySizeOf(recipeCache.recipe)
+            let sizeOfCacheMaps = await memorySizeOf(recipeCache.maps)
+            console.log(` *** size Of size Cache Recipe: { ${sizeOfCacheRecipe} }`)
+            console.log(` *** size Of size Cache Maps: { ${sizeOfCacheMaps} }`)
+        } else {
+            console.log(` *** Cache Redis empty : { ${recipeCache} }`)
+        }
+
         console.log(' *** socketId', socketId)
         if (JSON.stringify(recipeDataDb.recipe) !== JSON.stringify(recipeCache.recipe) ||
             JSON.stringify(recipeDataDb.maps) !== JSON.stringify(recipeCache.maps)
@@ -174,10 +183,10 @@ server.listen({port: config.port}, () =>
     console.log(`\n🚀\x1b[35m Server ready at http://localhost:${config.port} \x1b[0m \n`)
 )
 
-setInterval(() => {
-    console.log('\n')
-
-}, 19000)
+// setInterval(() => {
+//     console.log('\n')
+//
+// }, 19000)
 
 
 const waitFor = delay => new Promise(resolve => setTimeout(resolve, delay))
