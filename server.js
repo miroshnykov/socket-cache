@@ -111,15 +111,16 @@ io.on('connection', async (socket) => {
         let recipeDataDb = await recipeDb()
         // let sizeOfrecipeDataDbRecipe = await memorySizeOf(recipeDataDb.recipe)
         // let sizeOfrecipeDataDbMaps = await memorySizeOf(recipeDataDb.maps)
-        let sizeOfDb = await memorySizeOf(recipeDataDb)
+        let sizeOfDb = await memorySizeOf(recipeDataDb.maps)
 
         // console.log(` *** size Of size Db Recipe: { ${sizeOfrecipeDataDbRecipe} }`)
         // console.log(` *** size Of size Db Maps: { ${sizeOfrecipeDataDbMaps} }`)
         console.log(` *** size Of Db : { ${sizeOfDb} }`)
 
+        let sizeOfCacheMaps
         if (recipeCache.length !== 0) {
             let sizeOfCacheRecipe = await memorySizeOf(recipeCache.recipe)
-            let sizeOfCacheMaps = await memorySizeOf(recipeCache.maps)
+            sizeOfCacheMaps = await memorySizeOf(recipeCache.maps)
             let sizeOfCache = await memorySizeOf(recipeCache)
             // console.log(` *** size Of size Cache Recipe: { ${sizeOfCacheRecipe} }`)
             // console.log(` *** size Of size Cache Maps: { ${sizeOfCacheMaps} }`)
@@ -134,13 +135,13 @@ io.on('connection', async (socket) => {
         // if (JSON.stringify(recipeDataDb.recipe) !== JSON.stringify(recipeCache.recipe) ||
         //     JSON.stringify(recipeDataDb.maps) !== JSON.stringify(recipeCache.maps))
         // {
-        let recipeCacheTmp = Object.assign({}, recipeCache)
-        delete recipeCacheTmp.hash
-        let sizeOfCacheTmp = await memorySizeOf(recipeCacheTmp)
+        // let recipeCacheTmp = Object.assign({}, recipeCache)
+        // delete recipeCacheTmp.hash
+        // let sizeOfCacheTmp = await memorySizeOf(recipeCacheTmp)
 
-        console.log(` *** size Of Cache: { ${sizeOfCacheTmp} }`)
+        console.log(` *** size Of Cache: { ${sizeOfCacheMaps||0} }`)
 
-        if (JSON.stringify(recipeDataDb) !== JSON.stringify(recipeCacheTmp)) {
+        if (JSON.stringify(recipeDataDb.maps) !== JSON.stringify(recipeCache.maps)) {
             console.log(`\nrecipe maps was changed in DB:${JSON.stringify(Object.keys(recipeDataDb.maps))}, send to Flow Rotator`)
             // console.log(`\nrecipe was changed in DB:${JSON.stringify(Object.entries(recipeDataDb.recipe).length)}, send to Flow Rotator`)
             console.log(`\nsendRecipeCache socket:${socket.id}`)
