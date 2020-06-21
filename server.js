@@ -109,40 +109,24 @@ io.on('connection', async (socket) => {
 
         let recipeCache = await getDataCache('recipe') || []
         let recipeDataDb = await recipeDb()
-        // let sizeOfrecipeDataDbRecipe = await memorySizeOf(recipeDataDb.recipe)
-        // let sizeOfrecipeDataDbMaps = await memorySizeOf(recipeDataDb.maps)
+
         let sizeOfDbMaps = await memorySizeOf(recipeDataDb.maps)
+        let sizeOfDbRecipe = await memorySizeOf(recipeDataDb.recipe)
 
-        // console.log(` *** size Of size Db Recipe: { ${sizeOfrecipeDataDbRecipe} }`)
-        // console.log(` *** size Of size Db Maps: { ${sizeOfrecipeDataDbMaps} }`)
-        console.log(` *** size Of Db : { ${sizeOfDbMaps} }`)
+        console.log(`*** size Of DB Maps:     { ${sizeOfDbMaps} }`)
+        console.log(`*** size Of DB Recipe:   { ${sizeOfDbRecipe} }`)
+
         let sizeOfCacheMaps = await memorySizeOf(recipeCache.maps)
-        // let sizeOfCacheMaps
-        // if (recipeCache.length !== 0) {
-        //     let sizeOfCacheRecipe = await memorySizeOf(recipeCache.recipe)
-        //     sizeOfCacheMaps = await memorySizeOf(recipeCache.maps)
-        //     let sizeOfCache = await memorySizeOf(recipeCache)
-        //     // console.log(` *** size Of size Cache Recipe: { ${sizeOfCacheRecipe} }`)
-        //     // console.log(` *** size Of size Cache Maps: { ${sizeOfCacheMaps} }`)
-        //     // console.log(` *** size Of size sizeOfCache: { ${sizeOfCache} }`)
-        // } else {
-        //     // console.log(` *** Cache Redis empty : { ${recipeCache} }`)
-        // }
+        let sizeOfCacheRecipe = await memorySizeOf(recipeCache.recipe)
 
-        // console.log(' *** socketId', socketId)
-        //
-        //JSON.stringify(recipeDataDb.maps) !== JSON.stringify(recipeCache.maps)
-        // if (JSON.stringify(recipeDataDb.recipe) !== JSON.stringify(recipeCache.recipe) ||
-        //     JSON.stringify(recipeDataDb.maps) !== JSON.stringify(recipeCache.maps))
-        // {
-        // let recipeCacheTmp = Object.assign({}, recipeCache)
-        // delete recipeCacheTmp.hash
-        // let sizeOfCacheTmp = await memorySizeOf(recipeCacheTmp)
 
-        console.log(` **** size Of Cache: { ${sizeOfCacheMaps || 0} }`)
-        // if (recipeDataDb.maps !== recipeCache.maps) {
-        if (sizeOfCacheMaps !== sizeOfDbMaps) {
-        // if (JSON.stringify(recipeDataDb.maps) !== JSON.stringify(recipeCache.maps)) {
+        console.log(`\n*** size Of Cache Maps:   { ${sizeOfCacheMaps || 0} }`)
+        console.log(`*** size Of Cache Recipe: { ${sizeOfCacheRecipe || 0} }`)
+
+        if (sizeOfCacheMaps !== sizeOfDbMaps
+            || sizeOfCacheRecipe !== sizeOfDbRecipe
+        ) {
+            // if (JSON.stringify(recipeDataDb.maps) !== JSON.stringify(recipeCache.maps)) {
             console.log(`\nrecipe maps was changed in DB:${JSON.stringify(Object.keys(recipeDataDb.maps))}, send to Flow Rotator`)
             // console.log(`\nrecipe was changed in DB:${JSON.stringify(Object.entries(recipeDataDb.recipe).length)}, send to Flow Rotator`)
             console.log(`\nsendRecipeCache socket:${socket.id}`)
@@ -177,8 +161,8 @@ io.on('connection', async (socket) => {
             }
             console.log(`New client just connected: ${socket.id} `);
             // console.log(`Clients: ${JSON.stringify(clients)} `);
-            await waitFor(2000)
-            console.log(`Send recipe with hash:{  ${recipeCache.length === 0 && recipeDbTmp.hash || recipeCache.hash} }`)
+            await waitFor(6000)
+            console.log(`Send recipe to new client with hash:{  ${recipeCache.length === 0 && recipeDbTmp.hash || recipeCache.hash} }`)
             // console.log(recipeCache.length === 0 && tmp || recipeCache)
             io.to(socket.id).emit("recipeCache", recipeCache.length === 0 && recipeDbTmp || recipeCache)
         }
