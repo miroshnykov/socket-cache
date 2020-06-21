@@ -166,7 +166,7 @@ io.on('connection', async (socket) => {
             clients.push(socket.id)
             console.log(`Count of clients: ${clients.length} limit ${LIMIT_CLIENTS}`)
 
-            return
+            // return
             let recipeCache = await getDataCache('recipe') || []
             let recipeDbTmp
             if (recipeCache.length === 0) {
