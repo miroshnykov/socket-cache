@@ -176,8 +176,9 @@ io.on('connection', async (socket) => {
                 console.log(`set recipe to Cache hash:${recipeDbTmp.hash}`)
             }
             console.log(`New client just connected: ${socket.id} `);
-            console.log(`Clients: ${JSON.stringify(clients)} `);
+            // console.log(`Clients: ${JSON.stringify(clients)} `);
             await waitFor(2000)
+            console.log(`Send recipe with hash:{  ${recipeCache.length === 0 && recipeDbTmp.hash || recipeCache.hash} }`)
             // console.log(recipeCache.length === 0 && tmp || recipeCache)
             io.to(socket.id).emit("recipeCache", recipeCache.length === 0 && recipeDbTmp || recipeCache)
         }
