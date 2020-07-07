@@ -9,6 +9,7 @@ const {getDataCache, setDataCache} = require('./lib/redis')
 const {adUnits} = require('./db/adUnits')
 const {memorySizeOf} = require('./lib/helper')
 const {recipeDb} = require('./lib/recipeData')
+const metrics = require('./lib/metrics')
 
 app.get('/health', (req, res, next) => {
     res.send('Ok')
@@ -84,10 +85,15 @@ io.on('connection', async (socket) => {
 
     let recipeCacheInterval = []
     socket.on('disconnect', () => {
+        metrics.setStartMetric({
+            route: 'disconnect',
+            method: 'GET'
+        })
         clearInterval(recipeCacheInterval[socket.id]);
         clients.splice(clients.indexOf(socket.id, 1))
         console.log(`disconnect ${socket.id}, Count of client: ${clients.length} `);
         console.log(`disconnect clients:`, clients);
+        metrics.sendMetricsRequest(200)
     })
 
     socket.on('checkHash', async (hashFr) => {
@@ -106,6 +112,11 @@ io.on('connection', async (socket) => {
     })
 
     const sendRecipeCache = async (clients, socketId) => {
+
+        metrics.setStartMetric({
+            route: 'recipeCacheChanged',
+            method: 'GET'
+        })
 
         let recipeCache = await getDataCache('recipe') || []
         let recipeDataDb = await recipeDb()
@@ -133,6 +144,7 @@ io.on('connection', async (socket) => {
             console.log(`Count of clients: ${clients.length}`)
             recipeDataDb.hash = hash()
             console.log(`Hash:${recipeDataDb.hash}`)
+            metrics.sendMetricsRequest(200)
             setDataCache('recipe', recipeDataDb)
 
             io.sockets.emit("recipeCache", recipeDataDb)
@@ -145,6 +157,10 @@ io.on('connection', async (socket) => {
 
     if (!clients.includes(socket.id)) {
 
+        metrics.setStartMetric({
+            route: 'newClientConnected',
+            method: 'GET'
+        })
 
         if (clients.length < LIMIT_CLIENTS) {
             clients.push(socket.id)
@@ -164,6 +180,7 @@ io.on('connection', async (socket) => {
             await waitFor(6000)
             console.log(`Send recipe to new client with hash:{  ${recipeCache.length === 0 && recipeDbTmp.hash || recipeCache.hash} }`)
             // console.log(recipeCache.length === 0 && tmp || recipeCache)
+            metrics.sendMetricsRequest(200)
             io.to(socket.id).emit("recipeCache", recipeCache.length === 0 && recipeDbTmp || recipeCache)
         }
     }
@@ -188,5 +205,12 @@ server.listen({port: config.port}, () =>
 //
 // }, 19000)
 
+setInterval(function () {
+    metrics.sendMetricsSystem()
+}, config.influxdb.intervalSystem)
+
+setInterval(function () {
+    metrics.sendMetricsDisk()
+}, config.influxdb.intervalDisk)
 
 const waitFor = delay => new Promise(resolve => setTimeout(resolve, delay))
