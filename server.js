@@ -193,7 +193,6 @@ io.on('connection', async (socket) => {
 
     if (!clients.includes(socket.id)) {
 
-        return
         metrics.setStartMetric({
             route: 'newClientConnected',
             method: 'GET'
@@ -202,20 +201,18 @@ io.on('connection', async (socket) => {
         if (clients.length < LIMIT_CLIENTS) {
             clients.push(socket.id)
             console.log(`Count of clients: ${clients.length} limit ${LIMIT_CLIENTS}`)
-
+            console.log(`New client just connected: ${socket.id} `)
             // return
             let recipeCache = await getDataCache('recipe') || []
             let recipeDbTmp
             if (recipeCache.length === 0) {
-                console.log('get data from DB ')
+                console.log('redis empty dont send data')
+                return
                 recipeDbTmp = await recipeDb()
-                console.log('set hash ')
                 recipeDbTmp.hash = hash()
-                console.log('set cache ')
                 await setDataCache('recipe', recipeDbTmp)
-                console.log(`set recipe to Cache hash:${recipeDbTmp.hash}`)
             }
-            console.log(`New client just connected: ${socket.id} `);
+
             // console.log(`Clients: ${JSON.stringify(clients)} `);
             await waitFor(6000)
             console.log(`Send recipe to new client with hash:{  ${recipeCache.length === 0 && recipeDbTmp.hash || recipeCache.hash} }`)
