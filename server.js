@@ -98,7 +98,6 @@ io.on('connection', async (socket) => {
 
     socket.on('checkHash', async (hashFr) => {
         // console.log('\n checkHash:', hashFr)
-        return
         let recipeCache = await getDataCache('recipe') || []
         // console.log('recipeCache:',recipeCache)
         if (recipeCache.length === 0) {
@@ -110,9 +109,9 @@ io.on('connection', async (socket) => {
             let recipeDataDb = await recipeDb()
             recipeDataDb.hash = hash()
             console.log(`check hash no data in REDIS , get it from DB, new Hash:${recipeDataDb.hash}`)
-            metrics.sendMetricsRequest(200)
+            await setDataCache('recipe', recipeDataDb)
             io.to(socket.id).emit("recipeCache", recipeDataDb)
-            setDataCache('recipe', recipeDataDb)
+            metrics.sendMetricsRequest(200)
             return
         }
         if (recipeCache.hash === hashFr) {
@@ -176,8 +175,8 @@ io.on('connection', async (socket) => {
             console.log(`Count of clients: ${clients.length}`)
             recipeDataDb.hash = hash()
             console.log(`Hash:${recipeDataDb.hash}`)
+            await setDataCache('recipe', recipeDataDb)
             metrics.sendMetricsRequest(200)
-            setDataCache('recipe', recipeDataDb)
 
             io.sockets.emit("recipeCache", recipeDataDb)
         } else {
@@ -204,7 +203,7 @@ io.on('connection', async (socket) => {
             if (recipeCache.length === 0) {
                 recipeDbTmp = await recipeDb()
                 recipeDbTmp.hash = hash()
-                setDataCache('recipe', recipeDbTmp)
+                await setDataCache('recipe', recipeDbTmp)
                 console.log(`set recipe to Cache hash:${recipeDbTmp.hash}`)
             }
             console.log(`New client just connected: ${socket.id} `);
