@@ -99,14 +99,17 @@ io.on('connection', async (socket) => {
     socket.on('checkHash', async (hashFr) => {
         // console.log('\n checkHash:', hashFr)
         let recipeCache = await getDataCache('recipe') || []
-
         // console.log('recipeCache:',recipeCache)
         if (recipeCache.length === 0) {
+            metrics.setStartMetric({
+                route: 'checkHashEmptyRedis',
+                method: 'GET'
+            })
+
             let recipeDataDb = await recipeDb()
             recipeDataDb.hash = hash()
             console.log(`check hash no data in REDIS , get it from DB, new Hash:${recipeDataDb.hash}`)
-            console.log(`Hash:${recipeDataDb.hash}`)
-            // metrics.sendMetricsRequest(200)
+            metrics.sendMetricsRequest(200)
             io.to(socket.id).emit("recipeCache", recipeDataDb)
             setDataCache('recipe', recipeDataDb)
             return
