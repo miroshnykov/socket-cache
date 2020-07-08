@@ -98,10 +98,12 @@ io.on('connection', async (socket) => {
 
     socket.on('checkHash', async (hashFr) => {
         // console.log('\n checkHash:', hashFr)
-        return
+        // return
         let recipeCache = await getDataCache('recipe') || []
         // console.log('recipeCache:',recipeCache)
         if (recipeCache.length === 0) {
+            console.log('checkHash recipeCache is NULL')
+            return
             metrics.setStartMetric({
                 route: 'checkHashEmptyRedis',
                 method: 'GET'
