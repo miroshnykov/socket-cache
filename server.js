@@ -98,6 +98,7 @@ io.on('connection', async (socket) => {
 
     socket.on('checkHash', async (hashFr) => {
         // console.log('\n checkHash:', hashFr)
+        return
         let recipeCache = await getDataCache('recipe') || []
         // console.log('recipeCache:',recipeCache)
         if (recipeCache.length === 0) {
@@ -184,7 +185,7 @@ io.on('connection', async (socket) => {
         }
     }
 
-    recipeCacheInterval[socket.id] = setInterval(sendRecipeCache, 20000, clients, socket.id)
+    recipeCacheInterval[socket.id] = setInterval(sendRecipeCache, 2000, clients, socket.id)
 
     if (!clients.includes(socket.id)) {
 
