@@ -138,9 +138,7 @@ io.on('connection', async (socket) => {
         })
 
         let recipeCache = await getDataCache('recipe') || []
-        console.log('1 recipeCache')
         let recipeDataDb = await recipeDb()
-        console.log('1 recipeDataDb')
 
         let sizeOfDbMaps = await memorySizeOf(recipeDataDb.maps)
         let sizeOfDbRecipe = await memorySizeOf(recipeDataDb.recipe)
@@ -150,16 +148,15 @@ io.on('connection', async (socket) => {
         let sizeOfCacheRecipe = await memorySizeOf(recipeCache.recipe)
 
 
-        console.log(`*** size Of DB Maps:     { ${sizeOfDbMaps} }`)
-        console.log(`*** size Of DB Recipe:   { ${sizeOfDbRecipe} }`)
-
-        console.log(`\n*** size Of Cache Maps:   { ${sizeOfCacheMaps || 0} }`)
-        console.log(`*** size Of Cache Recipe: { ${sizeOfCacheRecipe || 0} }`)
-
-
         if (sizeOfCacheMaps !== sizeOfDbMaps
             || sizeOfCacheRecipe !== sizeOfDbRecipe
         ) {
+
+            console.log(`*** size Of DB Maps:     { ${sizeOfDbMaps} }`)
+            console.log(`*** size Of DB Recipe:   { ${sizeOfDbRecipe} }`)
+
+            console.log(`\n*** size Of Cache Maps:   { ${sizeOfCacheMaps || 0} }`)
+            console.log(`*** size Of Cache Recipe: { ${sizeOfCacheRecipe || 0} }`)
 
             // if (JSON.stringify(recipeDataDb.maps) !== JSON.stringify(recipeCache.maps)) {
             console.log(`\nrecipe maps was changed in DB:${JSON.stringify(Object.keys(recipeDataDb.maps))}, send to Flow Rotator`)
