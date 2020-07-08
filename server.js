@@ -214,7 +214,7 @@ io.on('connection', async (socket) => {
             }
 
             // console.log(`Clients: ${JSON.stringify(clients)} `);
-            // await waitFor(6000)
+            await waitFor(6000)
             console.log(`Send recipe to new client with hash:{  ${recipeCache.length === 0 && recipeDbTmp.hash || recipeCache.hash} }`)
             // console.log(recipeCache.length === 0 && tmp || recipeCache)
             metrics.sendMetricsRequest(200)
