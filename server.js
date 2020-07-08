@@ -98,6 +98,7 @@ io.on('connection', async (socket) => {
 
     socket.on('checkHash', async (hashFr) => {
         // console.log('\n checkHash:', hashFr)
+        return
         let recipeCache = await getDataCache('recipe') || []
         // console.log('recipeCache:',recipeCache)
         if (recipeCache.length === 0) {
@@ -135,7 +136,9 @@ io.on('connection', async (socket) => {
         })
 
         let recipeCache = await getDataCache('recipe') || []
+        console.log('1 recipeCache')
         let recipeDataDb = await recipeDb()
+        console.log('1 recipeDataDb')
 
         let sizeOfDbMaps = await memorySizeOf(recipeDataDb.maps)
         let sizeOfDbRecipe = await memorySizeOf(recipeDataDb.recipe)
@@ -145,17 +148,20 @@ io.on('connection', async (socket) => {
         let sizeOfCacheRecipe = await memorySizeOf(recipeCache.recipe)
 
 
+        console.log(`*** size Of DB Maps:     { ${sizeOfDbMaps} }`)
+        console.log(`*** size Of DB Recipe:   { ${sizeOfDbRecipe} }`)
+
+        console.log(`\n*** size Of Cache Maps:   { ${sizeOfCacheMaps || 0} }`)
+        console.log(`*** size Of Cache Recipe: { ${sizeOfCacheRecipe || 0} }`)
+
+
         if (sizeOfCacheMaps !== sizeOfDbMaps
             || sizeOfCacheRecipe !== sizeOfDbRecipe
         ) {
 
             // if (JSON.stringify(recipeDataDb.maps) !== JSON.stringify(recipeCache.maps)) {
             console.log(`\nrecipe maps was changed in DB:${JSON.stringify(Object.keys(recipeDataDb.maps))}, send to Flow Rotator`)
-            console.log(`*** size Of DB Maps:     { ${sizeOfDbMaps} }`)
-            console.log(`*** size Of DB Recipe:   { ${sizeOfDbRecipe} }`)
 
-            console.log(`\n*** size Of Cache Maps:   { ${sizeOfCacheMaps || 0} }`)
-            console.log(`*** size Of Cache Recipe: { ${sizeOfCacheRecipe || 0} }`)
 
             console.log(`  Count: 
                 landing_pages:{ ${recipeDataDb.maps.landing_pages.length} }
@@ -184,10 +190,11 @@ io.on('connection', async (socket) => {
         }
     }
 
-    recipeCacheInterval[socket.id] = setInterval(sendRecipeCache, 2000, clients, socket.id)
+    recipeCacheInterval[socket.id] = setInterval(sendRecipeCache, 20000, clients, socket.id)
 
     if (!clients.includes(socket.id)) {
 
+        return
         metrics.setStartMetric({
             route: 'newClientConnected',
             method: 'GET'
@@ -201,8 +208,11 @@ io.on('connection', async (socket) => {
             let recipeCache = await getDataCache('recipe') || []
             let recipeDbTmp
             if (recipeCache.length === 0) {
+                console.log('get data from DB ')
                 recipeDbTmp = await recipeDb()
+                console.log('set hash ')
                 recipeDbTmp.hash = hash()
+                console.log('set cache ')
                 await setDataCache('recipe', recipeDbTmp)
                 console.log(`set recipe to Cache hash:${recipeDbTmp.hash}`)
             }
