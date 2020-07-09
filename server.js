@@ -150,7 +150,7 @@ io.on('connection', async (socket) => {
         }
     }
 
-    recipeCacheInterval[socket.id] = setInterval(sendRecipeCache, 2000, clients, socket.id)
+    recipeCacheInterval[socket.id] = setInterval(sendRecipeCache, 20000, clients, socket.id)
 
     if (!clients.includes(socket.id)) {
 
@@ -215,12 +215,12 @@ function scheduleGc() {
 
 scheduleGc()
 
-setInterval(function () {
-    metrics.sendMetricsSystem()
-}, config.influxdb.intervalSystem)
-
-setInterval(function () {
-    metrics.sendMetricsDisk()
-}, config.influxdb.intervalDisk)
+// setInterval(function () {
+//     metrics.sendMetricsSystem()
+// }, config.influxdb.intervalSystem)
+//
+// setInterval(function () {
+//     metrics.sendMetricsDisk()
+// }, config.influxdb.intervalDisk)
 
 const waitFor = delay => new Promise(resolve => setTimeout(resolve, delay))
