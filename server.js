@@ -6,8 +6,7 @@ const app = express()
 const server = http.createServer(app);
 const io = socketIO(server)
 const {getDataCache, setDataCache} = require('./lib/redis')
-const {adUnits} = require('./db/adUnits')
-const {memorySizeOf} = require('./lib/helper')
+const {memorySizeOf, formatBytes} = require('./lib/helper')
 const {recipeDb} = require('./lib/recipeData')
 const metrics = require('./lib/metrics')
 
@@ -16,10 +15,9 @@ app.get('/health', (req, res, next) => {
 })
 
 const LIMIT_CLIENTS = 30
-const {currentTime} = require('./lib/helper')
 let {hash} = require('./lib/hash')
 let clients = []
-let runOnce = false
+let sizeof = require('object-sizeof')
 
 io.on('connection', async (socket) => {
     console.log(`\nFlow Rotator instance connected, socket.id:{ ${socket.id} }`);
@@ -78,31 +76,47 @@ io.on('connection', async (socket) => {
             method: 'GET'
         })
 
-        if (runOnce) return
+        // if (runOnce) return
         let recipeCache = await getDataCache('recipe') || []
         let recipeDataDb = await recipeDb()
-        const memoryHeapUsed = process.memoryUsage().heapUsed / (1024 * 1024)
-        const memoryHeapTotal = process.memoryUsage().heapTotal / (1024 * 1024)
-        console.log(`memoryHeapUsed:  \x1b[32m{ ${memoryHeapUsed} }\x1b[0m, memoryHeapTotal: { ${memoryHeapTotal} }`)
 
-        if (JSON.stringify(recipeDataDb.maps) !== JSON.stringify(recipeCache.maps)) {
+        // const memoryHeapUsed = process.memoryUsage().heapUsed / (1024 * 1024)
+        // const memoryHeapTotal = process.memoryUsage().heapTotal / (1024 * 1024)
+        // console.log(`memoryHeapUsed:  \x1b[32m{ ${memoryHeapUsed} }\x1b[0m, memoryHeapTotal: { ${memoryHeapTotal} }`)
 
-        // if (sizeOfCacheMaps !== sizeOfDbMaps
-        //     || sizeOfCacheRecipe !== sizeOfDbRecipe
-        // ) {
+        // console.log('DB sizeof maps',formatBytes(sizeof(recipeDataDb.maps)))
+        // console.log('DB sizeof maps',formatBytes(sizeof(recipeDataDb.recipe)))
+        //
+        // console.log(`Cache sizeof maps { ${formatBytes(sizeof(recipeCache.maps))} }`)
+        // console.log(`Cache sizeof maps { ${formatBytes(sizeof(recipeCache.recipe))} }`)
 
-            let sizeOfDbMaps = await memorySizeOf(recipeDataDb.maps)
-            let sizeOfDbRecipe = await memorySizeOf(recipeDataDb.recipe)
+        let sizeOfDbMaps = sizeof(recipeDataDb.maps)
+        let sizeOfDbRecipe = sizeof(recipeDataDb.recipe)
+
+        let sizeOfCacheMaps = sizeof(recipeCache.maps)
+        let sizeOfCacheRecipe = sizeof(recipeCache.recipe)
+
+        // let sizeOfDbMaps = await memorySizeOf(recipeDataDb.maps)
+        // let sizeOfDbRecipe = await memorySizeOf(recipeDataDb.recipe)
+        //
+        //
+        // let sizeOfCacheMaps = await memorySizeOf(recipeCache.maps)
+        // let sizeOfCacheRecipe = await memorySizeOf(recipeCache.recipe)
 
 
-            let sizeOfCacheMaps = await memorySizeOf(recipeCache.maps)
-            let sizeOfCacheRecipe = await memorySizeOf(recipeCache.recipe)
+        // if (JSON.stringify(recipeDataDb.maps) !== JSON.stringify(recipeCache.maps)) {
+        // let recipeCacheIntervalSize = sizeof(recipeCacheInterval)
+        // console.log(`*** size Of recipeCacheIntervalSize :     { ${formatBytes(recipeCacheIntervalSize)} }`)
 
-            console.log(`*** size Of DB Maps:     { ${sizeOfDbMaps} }`)
-            console.log(`*** size Of DB Recipe:   { ${sizeOfDbRecipe} }`)
+        if (sizeOfCacheMaps !== sizeOfDbMaps
+            || sizeOfCacheRecipe !== sizeOfDbRecipe
+        ) {
 
-            console.log(`\n*** size Of Cache Maps:   { ${sizeOfCacheMaps || 0} }`)
-            console.log(`*** size Of Cache Recipe: { ${sizeOfCacheRecipe || 0} }`)
+            console.log(`*** size Of DB Maps:     { ${formatBytes(sizeOfDbMaps)} }`)
+            console.log(`*** size Of DB Recipe:   { ${formatBytes(sizeOfDbRecipe)} }`)
+
+            console.log(`\n*** size Of Cache Maps:   { ${formatBytes(sizeOfCacheMaps) || 0} }`)
+            console.log(`*** size Of Cache Recipe: { ${formatBytes(sizeOfCacheRecipe) || 0} }`)
 
             // if (JSON.stringify(recipeDataDb.maps) !== JSON.stringify(recipeCache.maps)) {
             console.log(`\nrecipe maps was changed in DB:${JSON.stringify(Object.keys(recipeDataDb.maps))}, send to Flow Rotator`)
@@ -130,13 +144,13 @@ io.on('connection', async (socket) => {
             metrics.sendMetricsRequest(200)
 
             io.sockets.emit("recipeCache", recipeDataDb)
-            runOnce = true
+
         } else {
             // console.log(`Data in DB does not change, current connected clients: ${clients.length}, time ${currentTime()}`)
         }
     }
 
-    recipeCacheInterval[socket.id] = setInterval(sendRecipeCache, 20000, clients, socket.id)
+    recipeCacheInterval[socket.id] = setInterval(sendRecipeCache, 2000, clients, socket.id)
 
     if (!clients.includes(socket.id)) {
 
@@ -184,10 +198,22 @@ server.listen({port: config.port}, () =>
     console.log(`\n🚀\x1b[35m Server ready at http://localhost:${config.port} \x1b[0m \n`)
 )
 
-// setInterval(() => {
-//     console.log('\n')
-//
-// }, 19000)
+function scheduleGc() {
+    if (!global.gc) {
+        console.log('Garbage collection is not exposed');
+        return
+    }
+
+    setTimeout(function () {
+        global.gc();
+        const memoryHeapUsed = process.memoryUsage().heapUsed / (1024 * 1024)
+        const memoryHeapTotal = process.memoryUsage().heapTotal / (1024 * 1024)
+        console.log(`scheduleGc memoryHeapUsed:  \x1b[32m{ ${memoryHeapUsed} }\x1b[0m, memoryHeapTotal: { ${memoryHeapTotal} }`)
+        scheduleGc()
+    }, 300000) // 5min
+}
+
+scheduleGc()
 
 setInterval(function () {
     metrics.sendMetricsSystem()
