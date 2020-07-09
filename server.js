@@ -150,7 +150,7 @@ io.on('connection', async (socket) => {
         }
     }
 
-    recipeCacheInterval[socket.id] = setInterval(sendRecipeCache, 2000, clients, socket.id)
+    recipeCacheInterval[socket.id] = setInterval(sendRecipeCache, 20000, clients, socket.id)
 
     if (!clients.includes(socket.id)) {
 
