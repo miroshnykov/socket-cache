@@ -15,70 +15,11 @@ app.get('/health', (req, res, next) => {
     res.send('Ok')
 })
 
-app.get('/test', async (req, res, next) => {
-
-    const {advertisersProducts} = require('./db/advertisersProducts')
-
-
-    // let recipeCache = await getDataCache('recipe') || []
-    // if (recipeCache.length === 0) {
-    //     let segmentsData = await segmentsFormat()
-    //     let lpData = await lpFormat()
-    //     recipeCache = lpSegmentMerge(segmentsData, lpData)
-    //     setDataCache('recipe', recipeCache)
-    //     console.log('set recipe to Cache')
-    // }
-    let response1 = {}
-    let rs = await advertisersProducts()
-    console.log(rs)
-    response1.advertisersProducts = rs
-    // response1.segmentsData = segmentsData
-    // response1.lpData = lpData
-    res.send(response1)
-    return
-
-    console.time('ad-units')
-    let response = {}
-    // let adUnitsCache = await getDataCache('ad-units')
-    // // console.log('adUnitsCache:',adUnitsCache)
-    // if (!adUnitsCache){
-    //     let adUnits_ = await adUnits()
-    //     // console.log('set adUnits_ to redis ')
-    //     setDataCache('ad-units',adUnits_)
-    //     console.log('get Form db ')
-    //     response.count = adUnits_.length
-    //     response.source = 'from DB'
-    //     console.timeEnd('ad-units')
-    //     res.send(response)
-    //     return
-    // }
-    //
-    // console.log('get Form redis ', adUnitsCache.length)
-    // response.source = 'from cache'
-    // response.count = adUnitsCache.length
-    // console.timeEnd('ad-units')
-
-
-    let adUnitsDB = await adUnits()
-    let adUnitsCache = await getDataCache('ad-units')
-
-    if (JSON.stringify(adUnitsDB) !== JSON.stringify(adUnitsCache)) {
-        console.log('DATA was changed send to FR { adUnits} ')
-        setDataCache('ad-units', adUnitsDB)
-        response.count = adUnitsDB.length
-        response.source = 'setDataCache'
-        console.timeEnd('ad-units')
-        res.send(response)
-        return
-    }
-    response.source = 'No changes '
-    res.send(response)
-})
-
 const LIMIT_CLIENTS = 30
 const {currentTime} = require('./lib/helper')
 let {hash} = require('./lib/hash')
 let clients = []
+let runOnce = false
 
 io.on('connection', async (socket) => {
     console.log(`\nFlow Rotator instance connected, socket.id:{ ${socket.id} }`);
@@ -137,20 +78,25 @@ io.on('connection', async (socket) => {
             method: 'GET'
         })
 
+        if (runOnce) return
         let recipeCache = await getDataCache('recipe') || []
         let recipeDataDb = await recipeDb()
+        const memoryHeapUsed = process.memoryUsage().heapUsed / (1024 * 1024)
+        const memoryHeapTotal = process.memoryUsage().heapTotal / (1024 * 1024)
+        console.log(`memoryHeapUsed:  \x1b[32m{ ${memoryHeapUsed} }\x1b[0m, memoryHeapTotal: { ${memoryHeapTotal} }`)
 
-        let sizeOfDbMaps = await memorySizeOf(recipeDataDb.maps)
-        let sizeOfDbRecipe = await memorySizeOf(recipeDataDb.recipe)
+        if (JSON.stringify(recipeDataDb.maps) !== JSON.stringify(recipeCache.maps)) {
+
+        // if (sizeOfCacheMaps !== sizeOfDbMaps
+        //     || sizeOfCacheRecipe !== sizeOfDbRecipe
+        // ) {
+
+            let sizeOfDbMaps = await memorySizeOf(recipeDataDb.maps)
+            let sizeOfDbRecipe = await memorySizeOf(recipeDataDb.recipe)
 
 
-        let sizeOfCacheMaps = await memorySizeOf(recipeCache.maps)
-        let sizeOfCacheRecipe = await memorySizeOf(recipeCache.recipe)
-
-
-        if (sizeOfCacheMaps !== sizeOfDbMaps
-            || sizeOfCacheRecipe !== sizeOfDbRecipe
-        ) {
+            let sizeOfCacheMaps = await memorySizeOf(recipeCache.maps)
+            let sizeOfCacheRecipe = await memorySizeOf(recipeCache.recipe)
 
             console.log(`*** size Of DB Maps:     { ${sizeOfDbMaps} }`)
             console.log(`*** size Of DB Recipe:   { ${sizeOfDbRecipe} }`)
@@ -184,6 +130,7 @@ io.on('connection', async (socket) => {
             metrics.sendMetricsRequest(200)
 
             io.sockets.emit("recipeCache", recipeDataDb)
+            runOnce = true
         } else {
             // console.log(`Data in DB does not change, current connected clients: ${clients.length}, time ${currentTime()}`)
         }
