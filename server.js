@@ -215,12 +215,12 @@ function scheduleGc() {
 
 scheduleGc()
 
-// setInterval(function () {
-//     metrics.sendMetricsSystem()
-// }, config.influxdb.intervalSystem)
-//
-// setInterval(function () {
-//     metrics.sendMetricsDisk()
-// }, config.influxdb.intervalDisk)
+setInterval(function () {
+    metrics.sendMetricsSystem()
+}, config.influxdb.intervalSystem)
+
+setInterval(function () {
+    metrics.sendMetricsDisk()
+}, config.influxdb.intervalDisk)
 
 const waitFor = delay => new Promise(resolve => setTimeout(resolve, delay))
