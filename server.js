@@ -131,7 +131,7 @@ io.on('connection', async (socket) => {
 
     if (!clients.includes(socket.id)) {
 
-        return
+        await waitFor(6000)
         metrics.setStartMetric({
             route: 'newClientConnected',
             method: 'GET'
@@ -153,7 +153,6 @@ io.on('connection', async (socket) => {
             }
 
             // console.log(`Clients: ${JSON.stringify(clients)} `);
-            await waitFor(6000)
             console.log(`Send recipe to new client with hash:{  ${recipeCache.length === 0 && recipeDbTmp.hash || recipeCache.hash} }`)
             // console.log(recipeCache.length === 0 && tmp || recipeCache)
             metrics.sendMetricsRequest(200)
@@ -176,6 +175,8 @@ server.listen({port: config.port}, () =>
     console.log(`\n🚀\x1b[35m Server ready at http://localhost:${config.port} \x1b[0m \n`)
 )
 
+const numeral = require('numeral')
+
 function scheduleGc() {
     if (!global.gc) {
         console.log('Garbage collection is not exposed');
@@ -183,22 +184,24 @@ function scheduleGc() {
     }
 
     setTimeout(() => {
-        global.gc();
+
         const memoryHeapUsed = process.memoryUsage().heapUsed / (1024 * 1024)
         const memoryHeapTotal = process.memoryUsage().heapTotal / (1024 * 1024)
         const memoryRss = process.memoryUsage().rss / (1024 * 1024)
-        console.log(`Garbage collection running, rss: \x1b[32m{ ${memoryRss} }\x1b[0m, memoryHeapUsed  \x1b[32m{ ${memoryHeapUsed} }\x1b[0m, memoryHeapTotal: { ${memoryHeapTotal} }`)
+        console.log(`Before Garbage collection running, rss: \x1b[32m{ ${memoryRss} }\x1b[0m, memoryHeapUsed  \x1b[32m{ ${memoryHeapUsed} }\x1b[0m, memoryHeapTotal: { ${memoryHeapTotal} }`)
+
+        global.gc();
+
+        const {rss, heapUsed, heapTotal} = process.memoryUsage()
+        console.log(`After Garbage collection, rss: { ${numeral(rss).format('0.0 ib')} }, heapUsed: { ${numeral(heapUsed).format('0.0 ib')} },  heapTotal: { ${numeral(heapTotal).format('0.0 ib')} }`)
+
         scheduleGc()
     }, 300000) // 5min
 }
 
 scheduleGc()
 
-const numeral = require('numeral')
-setInterval(() => {
-    const {rss, heapUsed, heapTotal} = process.memoryUsage()
-    console.log(`MemoryUsage, rss: { ${numeral(rss).format('0.0 ib')} }, heapUsed: { ${numeral(heapUsed).format('0.0 ib')} },  heapTotal: { ${numeral(heapTotal).format('0.0 ib')} }`)
-}, 150000) //2.5 min
+
 
 setInterval(function () {
     metrics.sendMetricsSystem()
@@ -207,5 +210,20 @@ setInterval(function () {
 setInterval(function () {
     metrics.sendMetricsDisk()
 }, config.influxdb.intervalDisk)
+
+
+setTimeout(async () => {
+
+    let recipeCache = await getDataCache('recipe') || []
+    console.log('Redis count:',Object.keys(recipeCache).length)
+    if (Object.keys(recipeCache).length === 0){
+
+        let recipeDataDb = await recipeDb()
+        recipeDataDb.hash = hash()
+        console.log(`Redis is empty, set from DB with hash: { ${recipeDataDb.hash} }`)
+        await setDataCache('recipe', recipeDataDb)
+    }
+
+}, 3000)
 
 const waitFor = delay => new Promise(resolve => setTimeout(resolve, delay))
