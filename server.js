@@ -85,7 +85,7 @@ io.on('connection', async (socket) => {
         let sizeOfCacheMaps = await memorySizeOf(recipeCache.maps)
         let sizeOfCacheRecipe = await memorySizeOf(recipeCache.recipe)
 
-
+        // if (JSON.stringify(recipeDataDb.maps) !== JSON.stringify(recipeCache.maps)) {
         if (sizeOfCacheMaps !== sizeOfDbMaps
             || sizeOfCacheRecipe !== sizeOfDbRecipe
         ) {
@@ -181,16 +181,23 @@ function scheduleGc() {
         return
     }
 
-    setTimeout(function () {
+    setTimeout(() => {
         global.gc();
         const memoryHeapUsed = process.memoryUsage().heapUsed / (1024 * 1024)
         const memoryHeapTotal = process.memoryUsage().heapTotal / (1024 * 1024)
-        console.log(`scheduleGc memoryHeapUsed:  \x1b[32m{ ${memoryHeapUsed} }\x1b[0m, memoryHeapTotal: { ${memoryHeapTotal} }`)
+        const memoryRss = process.memoryUsage().rss / (1024 * 1024)
+        console.log(`Garbage collection running, rss: \x1b[32m{ ${memoryRss} }\x1b[0m, memoryHeapUsed  \x1b[32m{ ${memoryHeapUsed} }\x1b[0m, memoryHeapTotal: { ${memoryHeapTotal} }`)
         scheduleGc()
     }, 300000) // 5min
 }
 
 scheduleGc()
+
+const numeral = require('numeral')
+setInterval(() => {
+    const {rss, heapUsed, heapTotal} = process.memoryUsage()
+    console.log(`MemoryUsage, rss: { ${numeral(rss).format('0.0 ib')} }, heapUsed: { ${numeral(heapUsed).format('0.0 ib')} },  heapTotal: { ${numeral(heapTotal).format('0.0 ib')} }`)
+}, 150000) //2.5 min
 
 setInterval(function () {
     metrics.sendMetricsSystem()
