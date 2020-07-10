@@ -22,6 +22,7 @@
     "influxdb-nodejs": "^3.1.0",
     "lodash": "^4.17.15",
     "md5": "^2.2.1",
+    "numeral": "^2.0.6",
     "object-sizeof": "^1.6.1",
     "pino": "^6.3.2",
     "plain-config": "^0.1.3",
