@@ -127,10 +127,11 @@ io.on('connection', async (socket) => {
         }
     }
 
-    recipeCacheInterval[socket.id] = setInterval(sendRecipeCache, 20000, clients, socket.id)
+    recipeCacheInterval[socket.id] = setInterval(sendRecipeCache, 300000, clients, socket.id)
 
     if (!clients.includes(socket.id)) {
 
+        return
         metrics.setStartMetric({
             route: 'newClientConnected',
             method: 'GET'
