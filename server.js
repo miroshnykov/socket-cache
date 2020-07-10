@@ -10,6 +10,8 @@ const {memorySizeOf} = require('./lib/helper')
 const {recipeDb} = require('./lib/recipeData')
 const metrics = require('./lib/metrics')
 
+const {currentTime} = require('./lib/helper')
+
 app.get('/health', (req, res, next) => {
     res.send('Ok')
 })
@@ -21,13 +23,11 @@ let clients = []
 io.on('connection', async (socket) => {
     console.log(`\nFlow Rotator instance connected, socket.id:{ ${socket.id} }`);
 
-    let recipeCacheInterval = []
     socket.on('disconnect', () => {
         metrics.setStartMetric({
             route: 'disconnect',
             method: 'GET'
         })
-        clearInterval(recipeCacheInterval[socket.id]);
         clients.splice(clients.indexOf(socket.id, 1))
         console.log(`disconnect ${socket.id}, Count of client: ${clients.length} `);
         console.log(`disconnect clients:`, clients);
@@ -35,105 +35,30 @@ io.on('connection', async (socket) => {
     })
 
     socket.on('checkHash', async (hashFr) => {
-        // console.log('\n checkHash:', hashFr)
-        // return
         let recipeCache = await getDataCache('recipe') || []
-        // console.log('recipeCache:',recipeCache)
         if (recipeCache.length === 0) {
             console.log('checkHash recipeCache is NULL')
-            return
-            metrics.setStartMetric({
-                route: 'checkHashEmptyRedis',
-                method: 'GET'
-            })
-
-            let recipeDataDb = await recipeDb()
-            recipeDataDb.hash = hash()
-            console.log(`check hash no data in REDIS , get it from DB, new Hash:${recipeDataDb.hash}`)
-            await setDataCache('recipe', recipeDataDb)
-            io.to(socket.id).emit("recipeCache", recipeDataDb)
-            metrics.sendMetricsRequest(200)
             return
         }
         if (recipeCache.hash === hashFr) {
             // console.log(`hash the same, socketId  { ${socket.id} } `)
             return
         }
-        console.log(`recipeCacheOrigin:${recipeCache.hash}, FR hash:${hashFr}`)
-
-        console.log(`hash different send to socket id { ${socket.id} }`)
-        io.to(socket.id).emit("recipeCache", recipeCache)
-        // clients.splice(clients.indexOf(socket.id,1))
-        // console.log(`checksum ${data} `);
-        // console.log(`disconnect clients:`,clients);
-    })
-
-    const sendRecipeCache = async (clients, socketId) => {
-
         metrics.setStartMetric({
-            route: 'recipeCacheChanged',
+            route: 'differentHash',
             method: 'GET'
         })
 
-        let recipeCache = await getDataCache('recipe') || []
-        let recipeDataDb = await recipeDb()
-
-        let sizeOfDbMaps = await memorySizeOf(recipeDataDb.maps)
-        let sizeOfDbRecipe = await memorySizeOf(recipeDataDb.recipe)
-
-
-        let sizeOfCacheMaps = await memorySizeOf(recipeCache.maps)
-        let sizeOfCacheRecipe = await memorySizeOf(recipeCache.recipe)
-
-        // if (JSON.stringify(recipeDataDb.maps) !== JSON.stringify(recipeCache.maps)) {
-        if (sizeOfCacheMaps !== sizeOfDbMaps
-            || sizeOfCacheRecipe !== sizeOfDbRecipe
-        ) {
-
-            console.log(`*** size Of DB Maps:     { ${sizeOfDbMaps} }`)
-            console.log(`*** size Of DB Recipe:   { ${sizeOfDbRecipe} }`)
-
-            console.log(`\n*** size Of Cache Maps:   { ${sizeOfCacheMaps || 0} }`)
-            console.log(`*** size Of Cache Recipe: { ${sizeOfCacheRecipe || 0} }`)
-
-            // if (JSON.stringify(recipeDataDb.maps) !== JSON.stringify(recipeCache.maps)) {
-            console.log(`\nrecipe maps was changed in DB:${JSON.stringify(Object.keys(recipeDataDb.maps))}, send to Flow Rotator`)
-
-
-            console.log(`  Count: 
-                landing_pages:{ ${recipeDataDb.maps.landing_pages.length} }
-                affiliate_websites:{ ${Object.keys(recipeDataDb.maps.affiliate_websites).length} }
-                c_group_segment:{ ${Object.keys(recipeDataDb.maps.c_group_segment).length} }
-                c_group:{ ${Object.keys(recipeDataDb.maps.c_group).length} }
-                adUnits:{ ${Object.keys(recipeDataDb.maps.adUnits).length} }
-                segments:{ ${Object.keys(recipeDataDb.maps.segments).length} }
-                aff_info:{ ${Object.keys(recipeDataDb.maps.aff_info).length} }
-                campaigns:{ ${Object.keys(recipeDataDb.maps.campaigns).length} }
-                dimensions:{ ${Object.keys(recipeDataDb.maps.dimensions).length} }
-                smart_ad:{ ${Object.keys(recipeDataDb.maps.smart_ad).length} }
-                recipeDb:{ ${recipeDataDb.recipe.length} }`
-            )
-            // console.log(`\nrecipe was changed in DB:${JSON.stringify(Object.entries(recipeDataDb.recipe).length)}, send to Flow Rotator`)
-            console.log(`\nsendRecipeCache socket:${socket.id}`)
-            console.log(`Count of clients: ${clients.length}`)
-            recipeDataDb.hash = hash()
-            console.log(`Hash:${recipeDataDb.hash}`)
-            await setDataCache('recipe', recipeDataDb)
-            metrics.sendMetricsRequest(200)
-
-            io.sockets.emit("recipeCache", recipeDataDb)
-        } else {
-            // console.log(`Data in DB does not change, current connected clients: ${clients.length}, time ${currentTime()}`)
-        }
-    }
-
-    recipeCacheInterval[socket.id] = setInterval(sendRecipeCache, 300000, clients, socket.id)
+        console.log(`Hash is different, send to socket id { ${socket.id} }, Count of client: ${clients.length}, recipeCacheOrigin:{ ${recipeCache.hash} }, FR hash:{ ${hashFr} }`)
+        io.to(socket.id).emit("recipeCache", recipeCache)
+        metrics.sendMetricsRequest(200)
+    })
 
     if (!clients.includes(socket.id)) {
 
         await waitFor(6000)
         metrics.setStartMetric({
-            route: 'newClientConnected',
+            route: 'newClientSentRecipe',
             method: 'GET'
         })
 
@@ -143,20 +68,14 @@ io.on('connection', async (socket) => {
             console.log(`New client just connected: ${socket.id} `)
             // return
             let recipeCache = await getDataCache('recipe') || []
-            let recipeDbTmp
             if (recipeCache.length === 0) {
                 console.log('redis empty dont send data')
                 return
-                recipeDbTmp = await recipeDb()
-                recipeDbTmp.hash = hash()
-                await setDataCache('recipe', recipeDbTmp)
             }
 
-            // console.log(`Clients: ${JSON.stringify(clients)} `);
-            console.log(`Send recipe to new client with hash:{  ${recipeCache.length === 0 && recipeDbTmp.hash || recipeCache.hash} }`)
-            // console.log(recipeCache.length === 0 && tmp || recipeCache)
+            console.log(`Send recipe to new client with hash:{ ${recipeCache.hash} }`)
             metrics.sendMetricsRequest(200)
-            io.to(socket.id).emit("recipeCache", recipeCache.length === 0 && recipeDbTmp || recipeCache)
+            io.to(socket.id).emit("recipeCache", recipeCache)
         }
     }
 
@@ -185,23 +104,77 @@ function scheduleGc() {
 
     setTimeout(() => {
 
-        const memoryHeapUsed = process.memoryUsage().heapUsed / (1024 * 1024)
-        const memoryHeapTotal = process.memoryUsage().heapTotal / (1024 * 1024)
-        const memoryRss = process.memoryUsage().rss / (1024 * 1024)
-        console.log(`Before Garbage collection running, rss: \x1b[32m{ ${memoryRss} }\x1b[0m, memoryHeapUsed  \x1b[32m{ ${memoryHeapUsed} }\x1b[0m, memoryHeapTotal: { ${memoryHeapTotal} }`)
+        const memoryHeapUsed = process.memoryUsage().heapUsed
+        const memoryHeapTotal = process.memoryUsage().heapTotal
+        const memoryRss = process.memoryUsage().rss
+        console.log(`Before Garbage collection running, rss: { ${numeral(memoryRss).format('0.0 ib')} }, heapUsed  { ${numeral(memoryHeapUsed).format('0.0 ib')} }, heapTotal: { ${numeral(memoryHeapTotal).format('0.0 ib')} }`)
 
         global.gc();
 
         const {rss, heapUsed, heapTotal} = process.memoryUsage()
-        console.log(`After Garbage collection, rss: { ${numeral(rss).format('0.0 ib')} }, heapUsed: { ${numeral(heapUsed).format('0.0 ib')} },  heapTotal: { ${numeral(heapTotal).format('0.0 ib')} }`)
+        console.log(`*After Garbage collection running, rss: { ${numeral(rss).format('0.0 ib')} }, heapUsed: { ${numeral(heapUsed).format('0.0 ib')} }, heapTotal: { ${numeral(heapTotal).format('0.0 ib')} }`)
 
         scheduleGc()
-    }, 300000) // 5min
+    }, 720000) // 12min
 }
 
 scheduleGc()
 
+setInterval(async () => {
 
+    metrics.setStartMetric({
+        route: 'recipeCacheChanged',
+        method: 'GET'
+    })
+
+    let recipeCache = await getDataCache('recipe') || []
+    let recipeDataDb = await recipeDb()
+
+    let sizeOfDbMaps = await memorySizeOf(recipeDataDb.maps)
+    let sizeOfDbRecipe = await memorySizeOf(recipeDataDb.recipe)
+
+
+    let sizeOfCacheMaps = await memorySizeOf(recipeCache.maps)
+    let sizeOfCacheRecipe = await memorySizeOf(recipeCache.recipe)
+
+    // if (JSON.stringify(recipeDataDb.maps) !== JSON.stringify(recipeCache.maps)) {
+    if (sizeOfCacheMaps !== sizeOfDbMaps
+        || sizeOfCacheRecipe !== sizeOfDbRecipe
+    ) {
+
+        console.log(`*** size Of DB Maps:     { ${sizeOfDbMaps} }`)
+        console.log(`*** size Of DB Recipe:   { ${sizeOfDbRecipe} }`)
+
+        console.log(`\n*** size Of Cache Maps:   { ${sizeOfCacheMaps || 0} }`)
+        console.log(`*** size Of Cache Recipe: { ${sizeOfCacheRecipe || 0} }`)
+
+        // if (JSON.stringify(recipeDataDb.maps) !== JSON.stringify(recipeCache.maps)) {
+        console.log(`\nrecipe maps was changed in DB:${JSON.stringify(Object.keys(recipeDataDb.maps))}, send to Flow Rotator`)
+
+
+        console.log(`  Count: 
+                landing_pages:{ ${recipeDataDb.maps.landing_pages.length} }
+                affiliate_websites:{ ${Object.keys(recipeDataDb.maps.affiliate_websites).length} }
+                c_group_segment:{ ${Object.keys(recipeDataDb.maps.c_group_segment).length} }
+                c_group:{ ${Object.keys(recipeDataDb.maps.c_group).length} }
+                adUnits:{ ${Object.keys(recipeDataDb.maps.adUnits).length} }
+                segments:{ ${Object.keys(recipeDataDb.maps.segments).length} }
+                aff_info:{ ${Object.keys(recipeDataDb.maps.aff_info).length} }
+                campaigns:{ ${Object.keys(recipeDataDb.maps.campaigns).length} }
+                dimensions:{ ${Object.keys(recipeDataDb.maps.dimensions).length} }
+                smart_ad:{ ${Object.keys(recipeDataDb.maps.smart_ad).length} }
+                recipeDb:{ ${recipeDataDb.recipe.length} }`
+        )
+        // console.log(`\nrecipe was changed in DB:${JSON.stringify(Object.entries(recipeDataDb.recipe).length)}, send to Flow Rotator`)
+        recipeDataDb.hash = hash()
+        console.log(`Hash:${recipeDataDb.hash}`)
+        await setDataCache('recipe', recipeDataDb)
+        metrics.sendMetricsRequest(200)
+
+    } else {
+        // console.log(`Data in DB does not change,  time ${currentTime()}`)
+    }
+}, 300000) // 5min
 
 setInterval(function () {
     metrics.sendMetricsSystem()
@@ -212,11 +185,12 @@ setInterval(function () {
 }, config.influxdb.intervalDisk)
 
 
+// run once, first setup to redis from DB
 setTimeout(async () => {
 
     let recipeCache = await getDataCache('recipe') || []
-    console.log('Redis count:',Object.keys(recipeCache).length)
-    if (Object.keys(recipeCache).length === 0){
+    console.log('Redis count:', Object.keys(recipeCache).length)
+    if (Object.keys(recipeCache).length === 0) {
 
         let recipeDataDb = await recipeDb()
         recipeDataDb.hash = hash()
