@@ -20,6 +20,7 @@ const affInfo = async () => {
                           ON emple.id = aff.account_mgr_id 
                    LEFT JOIN employees empl 
                           ON empl.id = aff.employee_id 
+            WHERE aff.salesforce_id <> 0  AND  aff.status IN ('active','suspended' )                          
         `)
         await dbMysql.end()
         // console.log(`\nget all adUnits count: ${result.length}`)

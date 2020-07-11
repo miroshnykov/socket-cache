@@ -8,6 +8,7 @@ const io = socketIO(server)
 const {getDataCache, setDataCache} = require('./lib/redis')
 const {memorySizeOf} = require('./lib/helper')
 const {recipeDb} = require('./lib/recipeData')
+const {checksum} = require('./db/checksum')
 const metrics = require('./lib/metrics')
 
 const {currentTime} = require('./lib/helper')
@@ -15,6 +16,20 @@ const {currentTime} = require('./lib/helper')
 app.get('/health', (req, res, next) => {
     res.send('Ok')
 })
+
+app.get('/test', async (req, res, next) => {
+    console.time('recipeDb')
+    // let recipeDataDb = await recipeDb()
+    for (let i = 0; i < 80; i++) {
+        let recipeDataDb1 = await recipeDb()
+    }
+    console.timeEnd('recipeDb')
+    const {rss, heapUsed, heapTotal} = process.memoryUsage()
+    console.log(`rss: { ${numeral(rss).format('0.0 ib')} }, heapUsed: { ${numeral(heapUsed).format('0.0 ib')} }, heapTotal: { ${numeral(heapTotal).format('0.0 ib')} }`)
+
+    res.send('done')
+})
+
 
 const LIMIT_CLIENTS = 30
 let {hash} = require('./lib/hash')
@@ -86,10 +101,6 @@ io.on('connect', async (socket) => {
     console.log(`Count of clients: ${clients.length} limit 30`)
 })
 
-io.on('disconnect', async (socket) => {
-    console.log('  !!!!!!!!!!!!!! disconnect', socket.id)
-})
-
 server.listen({port: config.port}, () =>
     console.log(`\n🚀\x1b[35m Server ready at http://localhost:${config.port} \x1b[0m \n`)
 )
@@ -115,13 +126,21 @@ function scheduleGc() {
         console.log(`*After Garbage collection running, rss: { ${numeral(rss).format('0.0 ib')} }, heapUsed: { ${numeral(heapUsed).format('0.0 ib')} }, heapTotal: { ${numeral(heapTotal).format('0.0 ib')} }`)
 
         scheduleGc()
-    }, 720000) // 12min
+    }, 1800000) // 30min
 }
 
 scheduleGc()
 
-setInterval(async () => {
 
+setInterval(function () {
+    metrics.sendMetricsSystem()
+}, config.influxdb.intervalSystem)
+
+setInterval(function () {
+    metrics.sendMetricsDisk()
+}, config.influxdb.intervalDisk)
+
+const recipeUpdateOld = async () => {
     metrics.setStartMetric({
         route: 'recipeCacheChanged',
         method: 'GET'
@@ -174,16 +193,57 @@ setInterval(async () => {
     } else {
         // console.log(`Data in DB does not change,  time ${currentTime()}`)
     }
-}, 300000) // 5min
 
-setInterval(function () {
-    metrics.sendMetricsSystem()
-}, config.influxdb.intervalSystem)
+}
 
-setInterval(function () {
-    metrics.sendMetricsDisk()
-}, config.influxdb.intervalDisk)
+const recipeUpdate = async () => {
+    metrics.setStartMetric({
+        route: 'recipeCacheChanged',
+        method: 'GET'
+    })
 
+    let recipeDataDb = await recipeDb()
+
+    let sizeOfDbMaps = await memorySizeOf(recipeDataDb.maps)
+    let sizeOfDbRecipe = await memorySizeOf(recipeDataDb.recipe)
+
+    console.log(`*** size Of DB Maps:     { ${sizeOfDbMaps} }`)
+    console.log(`*** size Of DB Recipe:   { ${sizeOfDbRecipe} }`)
+
+
+    console.log(`  Count: 
+                landing_pages:{ ${recipeDataDb.maps.landing_pages.length} }
+                affiliate_websites:{ ${Object.keys(recipeDataDb.maps.affiliate_websites).length} }
+                c_group_segment:{ ${Object.keys(recipeDataDb.maps.c_group_segment).length} }
+                c_group:{ ${Object.keys(recipeDataDb.maps.c_group).length} }
+                adUnits:{ ${Object.keys(recipeDataDb.maps.adUnits).length} }
+                segments:{ ${Object.keys(recipeDataDb.maps.segments).length} }
+                aff_info:{ ${Object.keys(recipeDataDb.maps.aff_info).length} }
+                campaigns:{ ${Object.keys(recipeDataDb.maps.campaigns).length} }
+                dimensions:{ ${Object.keys(recipeDataDb.maps.dimensions).length} }
+                smart_ad:{ ${Object.keys(recipeDataDb.maps.smart_ad).length} }
+                recipeDb:{ ${recipeDataDb.recipe.length} }`
+    )
+    // console.log(`\nrecipe was changed in DB:${JSON.stringify(Object.entries(recipeDataDb.recipe).length)}, send to Flow Rotator`)
+    recipeDataDb.hash = hash()
+    console.log(`Hash:${recipeDataDb.hash}`)
+    await setDataCache('recipe', recipeDataDb)
+    metrics.sendMetricsRequest(200)
+
+    const {rss, heapUsed, heapTotal} = process.memoryUsage()
+    console.log(`* Memory rss: { ${numeral(rss).format('0.0 ib')} }, heapUsed: { ${numeral(heapUsed).format('0.0 ib')} }, heapTotal: { ${numeral(heapTotal).format('0.0 ib')} }`)
+}
+
+setInterval(async () => {
+    let checksumDb = await checksum()
+    let checksumDbRedis = await getDataCache('checksum') || []
+    if (checksumDb !== checksumDbRedis) {
+        console.log(`checksum is different, let update recipe in redis`)
+        await setDataCache('checksum', checksumDb)
+        await recipeUpdate()
+    }
+
+}, 420000) // 7 min
 
 // run once, first setup to redis from DB
 setTimeout(async () => {
