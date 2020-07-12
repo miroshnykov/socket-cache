@@ -67,6 +67,8 @@ io.on('connection', async (socket) => {
 
         console.log(`Hash is different, send to socket id { ${socket.id} }, Count of client: ${clients.length}, recipeCacheOrigin:{ ${recipeCache.hash} }, FR hash:{ ${hashFr} }`)
         io.to(socket.id).emit("recipeCache", recipeCache)
+
+        recipeCache = null
         metrics.sendMetricsRequest(200)
     })
 
@@ -92,6 +94,7 @@ io.on('connection', async (socket) => {
             console.log(`Send recipe to new client with hash:{ ${recipeCache.hash} }`)
             metrics.sendMetricsRequest(200)
             io.to(socket.id).emit("recipeCache", recipeCache)
+            recipeCache = null
         }
     }
 
@@ -247,6 +250,11 @@ const recipeUpdate = async () => {
 
     const {rss, heapUsed, heapTotal} = process.memoryUsage()
     console.log(`* Memory rss: { ${numeral(rss).format('0.0 ib')} }, heapUsed: { ${numeral(heapUsed).format('0.0 ib')} }, heapTotal: { ${numeral(heapTotal).format('0.0 ib')} }`)
+
+    recipeDataDb = null
+    sizeOfDbMaps = null
+    sizeOfDbRecipe = null
+
 }
 
 setInterval(async () => {
@@ -258,6 +266,8 @@ setInterval(async () => {
         await recipeUpdate()
     }
 
+    checksumDbRedis = null
+    checksumDb = null
 }, 420000) // 7 min
 
 // run once, first setup to redis from DB
@@ -273,6 +283,7 @@ setTimeout(async () => {
         await setDataCache('recipe', recipeDataDb)
     }
 
+    recipeCache = null
 }, 3000)
 
 const waitFor = delay => new Promise(resolve => setTimeout(resolve, delay))
