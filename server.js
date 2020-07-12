@@ -108,36 +108,36 @@ server.listen({port: config.port}, () =>
 
 const numeral = require('numeral')
 
-function scheduleGc() {
-    if (!global.gc) {
-        console.log('Garbage collection is not exposed');
-        return
-    }
-
-    setTimeout(() => {
-
-        const memoryHeapUsed = process.memoryUsage().heapUsed
-        const memoryHeapTotal = process.memoryUsage().heapTotal
-        const memoryRss = process.memoryUsage().rss
-        console.log(`Before Garbage collection running, rss: { ${numeral(memoryRss).format('0.0 ib')} }, heapUsed  { ${numeral(memoryHeapUsed).format('0.0 ib')} }, heapTotal: { ${numeral(memoryHeapTotal).format('0.0 ib')} }`)
-
-        global.gc();
-
-        const {rss, heapUsed, heapTotal} = process.memoryUsage()
-        console.log(`*After Garbage collection running, rss: { ${numeral(rss).format('0.0 ib')} }, heapUsed: { ${numeral(heapUsed).format('0.0 ib')} }, heapTotal: { ${numeral(heapTotal).format('0.0 ib')} }`)
-
-        let totalmem = os.totalmem()
-        let freemem = os.freemem()
-        let memory_usage_perc = Number((100 - (freemem / totalmem) * 100).toFixed(2))
-
-        console.log(`Memory usage: { ${memory_usage_perc} }`)
-
-
-        scheduleGc()
-    }, 1800000) // 30min
-}
-
-scheduleGc()
+// function scheduleGc() {
+//     if (!global.gc) {
+//         console.log('Garbage collection is not exposed');
+//         return
+//     }
+//
+//     setTimeout(() => {
+//
+//         const memoryHeapUsed = process.memoryUsage().heapUsed
+//         const memoryHeapTotal = process.memoryUsage().heapTotal
+//         const memoryRss = process.memoryUsage().rss
+//         console.log(`Before Garbage collection running, rss: { ${numeral(memoryRss).format('0.0 ib')} }, heapUsed  { ${numeral(memoryHeapUsed).format('0.0 ib')} }, heapTotal: { ${numeral(memoryHeapTotal).format('0.0 ib')} }`)
+//
+//         global.gc();
+//
+//         const {rss, heapUsed, heapTotal} = process.memoryUsage()
+//         console.log(`*After Garbage collection running, rss: { ${numeral(rss).format('0.0 ib')} }, heapUsed: { ${numeral(heapUsed).format('0.0 ib')} }, heapTotal: { ${numeral(heapTotal).format('0.0 ib')} }`)
+//
+//         let totalmem = os.totalmem()
+//         let freemem = os.freemem()
+//         let memory_usage_perc = Number((100 - (freemem / totalmem) * 100).toFixed(2))
+//
+//         console.log(`Memory usage: { ${memory_usage_perc} }`)
+//
+//
+//         scheduleGc()
+//     }, 1800000) // 30min
+// }
+//
+// scheduleGc()
 
 
 setInterval(function () {
@@ -237,6 +237,13 @@ const recipeUpdate = async () => {
     console.log(`Hash:${recipeDataDb.hash}`)
     await setDataCache('recipe', recipeDataDb)
     metrics.sendMetricsRequest(200)
+
+
+    let totalmem = os.totalmem()
+    let freemem = os.freemem()
+    let memory_usage_perc = Number((100 - (freemem / totalmem) * 100).toFixed(2))
+
+    console.log(`Memory usage: { ${memory_usage_perc} }`)
 
     const {rss, heapUsed, heapTotal} = process.memoryUsage()
     console.log(`* Memory rss: { ${numeral(rss).format('0.0 ib')} }, heapUsed: { ${numeral(heapUsed).format('0.0 ib')} }, heapTotal: { ${numeral(heapTotal).format('0.0 ib')} }`)
