@@ -12,6 +12,7 @@ const {checksum} = require('./db/checksum')
 const metrics = require('./lib/metrics')
 
 const {currentTime} = require('./lib/helper')
+const os = require('os')
 
 app.get('/health', (req, res, next) => {
     res.send('Ok')
@@ -124,6 +125,13 @@ function scheduleGc() {
 
         const {rss, heapUsed, heapTotal} = process.memoryUsage()
         console.log(`*After Garbage collection running, rss: { ${numeral(rss).format('0.0 ib')} }, heapUsed: { ${numeral(heapUsed).format('0.0 ib')} }, heapTotal: { ${numeral(heapTotal).format('0.0 ib')} }`)
+
+        let totalmem = os.totalmem()
+        let freemem = os.freemem()
+        let memory_usage_perc = Number((100 - (freemem / totalmem) * 100).toFixed(2))
+
+        console.log(`Memory usage: { ${memory_usage_perc} }`)
+
 
         scheduleGc()
     }, 1800000) // 30min
