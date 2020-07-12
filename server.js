@@ -246,7 +246,7 @@ setInterval(async () => {
     let checksumDb = await checksum()
     let checksumDbRedis = await getDataCache('checksum') || []
     if (checksumDb !== checksumDbRedis) {
-        console.log(`checksum is different, let update recipe in redis`)
+        console.log(`checksum is different, let update recipe in redis, checksumDb:{ ${checksumDb} } ,checksumDbRedis: { ${checksumDbRedis} }`)
         await setDataCache('checksum', checksumDb)
         await recipeUpdate()
     }
