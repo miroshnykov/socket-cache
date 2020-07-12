@@ -39,38 +39,38 @@ let clients = []
 io.on('connection', async (socket) => {
     console.log(`\nFlow Rotator instance connected, socket.id:{ ${socket.id} }`);
 
-    socket.on('disconnect', () => {
-        metrics.setStartMetric({
-            route: 'disconnect',
-            method: 'GET'
-        })
-        clients.splice(clients.indexOf(socket.id, 1))
-        console.log(`disconnect ${socket.id}, Count of client: ${clients.length} `);
-        console.log(`disconnect clients:`, clients);
-        metrics.sendMetricsRequest(200)
-    })
-
-    socket.on('checkHash', async (hashFr) => {
-        let recipeCache = await getDataCache('recipe') || []
-        if (recipeCache.length === 0) {
-            console.log('checkHash recipeCache is NULL')
-            return
-        }
-        if (recipeCache.hash === hashFr) {
-            // console.log(`hash the same, socketId  { ${socket.id} } `)
-            return
-        }
-        metrics.setStartMetric({
-            route: 'differentHash',
-            method: 'GET'
-        })
-
-        console.log(`Hash is different, send to socket id { ${socket.id} }, Count of client: ${clients.length}, recipeCacheOrigin:{ ${recipeCache.hash} }, FR hash:{ ${hashFr} }`)
-        io.to(socket.id).emit("recipeCache", recipeCache)
-
-        recipeCache = null
-        metrics.sendMetricsRequest(200)
-    })
+    // socket.on('disconnect', () => {
+    //     metrics.setStartMetric({
+    //         route: 'disconnect',
+    //         method: 'GET'
+    //     })
+    //     clients.splice(clients.indexOf(socket.id, 1))
+    //     console.log(`disconnect ${socket.id}, Count of client: ${clients.length} `);
+    //     console.log(`disconnect clients:`, clients);
+    //     metrics.sendMetricsRequest(200)
+    // })
+    //
+    // socket.on('checkHash', async (hashFr) => {
+    //     let recipeCache = await getDataCache('recipe') || []
+    //     if (recipeCache.length === 0) {
+    //         console.log('checkHash recipeCache is NULL')
+    //         return
+    //     }
+    //     if (recipeCache.hash === hashFr) {
+    //         // console.log(`hash the same, socketId  { ${socket.id} } `)
+    //         return
+    //     }
+    //     metrics.setStartMetric({
+    //         route: 'differentHash',
+    //         method: 'GET'
+    //     })
+    //
+    //     console.log(`Hash is different, send to socket id { ${socket.id} }, Count of client: ${clients.length}, recipeCacheOrigin:{ ${recipeCache.hash} }, FR hash:{ ${hashFr} }`)
+    //     io.to(socket.id).emit("recipeCache", recipeCache)
+    //
+    //     recipeCache = null
+    //     metrics.sendMetricsRequest(200)
+    // })
 
     if (!clients.includes(socket.id)) {
 
@@ -205,6 +205,14 @@ const recipeUpdateOld = async () => {
         // console.log(`Data in DB does not change,  time ${currentTime()}`)
     }
 
+    recipeCache = null
+    recipeDataDb = null
+
+    sizeOfDbMaps = null
+    sizeOfCacheMaps = null
+    sizeOfDbRecipe = null
+    sizeOfCacheRecipe = null
+
 }
 
 const recipeUpdate = async () => {
@@ -258,16 +266,18 @@ const recipeUpdate = async () => {
 }
 
 setInterval(async () => {
-    let checksumDb = await checksum()
-    let checksumDbRedis = await getDataCache('checksum') || []
-    if (checksumDb !== checksumDbRedis) {
-        console.log(`checksum is different, let update recipe in redis, checksumDb:{ ${checksumDb} } ,checksumDbRedis: { ${checksumDbRedis} }`)
-        await setDataCache('checksum', checksumDb)
-        await recipeUpdate()
-    }
+    await recipeUpdateOld()
 
-    checksumDbRedis = null
-    checksumDb = null
+    // let checksumDb = await checksum()
+    // let checksumDbRedis = await getDataCache('checksum') || []
+    // if (checksumDb !== checksumDbRedis) {
+    //     console.log(`checksum is different, let update recipe in redis, checksumDb:{ ${checksumDb} } ,checksumDbRedis: { ${checksumDbRedis} }`)
+    //     await setDataCache('checksum', checksumDb)
+    //     await recipeUpdate()
+    // }
+    //
+    // checksumDbRedis = null
+    // checksumDb = null
 }, 420000) // 7 min
 
 // run once, first setup to redis from DB
