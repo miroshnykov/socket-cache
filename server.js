@@ -137,7 +137,7 @@ function scheduleGc() {
 
 
         scheduleGc()
-    }, 1800000) // 30min
+    }, 300000) // 5min
 }
 
 scheduleGc()
