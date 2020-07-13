@@ -56,12 +56,10 @@ io.on('connection', async (socket) => {
         let recipeCache = await getDataCache('recipe') || []
         if (recipeCache.length === 0) {
             console.log('checkHash recipeCache is NULL')
-            recipeCache = null
             return
         }
         if (recipeCache.hash === hashFr) {
             // console.log(`hash the same, socketId  { ${socket.id} } `)
-            recipeCache = null
             return
         }
         metrics.setStartMetric({
@@ -72,7 +70,6 @@ io.on('connection', async (socket) => {
         console.log(`Hash is different, send to socket id { ${socket.id} }, Count of client: ${clients.length}, recipeCacheOrigin:{ ${recipeCache.hash} }, FR hash:{ ${hashFr} }`)
         io.to(socket.id).emit("recipeCache", recipeCache)
 
-        recipeCache = null
         metrics.sendMetricsRequest(200)
     })
 
@@ -92,14 +89,12 @@ io.on('connection', async (socket) => {
             let recipeCache = await getDataCache('recipe') || []
             if (recipeCache.length === 0) {
                 console.log('redis empty dont send data')
-                recipeCache = null
                 return
             }
 
             console.log(`Send recipe to new client with hash:{ ${recipeCache.hash} }`)
             metrics.sendMetricsRequest(200)
             io.to(socket.id).emit("recipeCache", recipeCache)
-            recipeCache = null
         }
     }
 
@@ -116,36 +111,36 @@ server.listen({port: config.port}, () =>
 
 const numeral = require('numeral')
 
-// function scheduleGc() {
-//     if (!global.gc) {
-//         console.log('Garbage collection is not exposed');
-//         return
-//     }
-//
-//     setTimeout(() => {
-//
-//         const memoryHeapUsed = process.memoryUsage().heapUsed
-//         const memoryHeapTotal = process.memoryUsage().heapTotal
-//         const memoryRss = process.memoryUsage().rss
-//         console.log(`Before Garbage collection running, rss: { ${numeral(memoryRss).format('0.0 ib')} }, heapUsed  { ${numeral(memoryHeapUsed).format('0.0 ib')} }, heapTotal: { ${numeral(memoryHeapTotal).format('0.0 ib')} }`)
-//
-//         global.gc();
-//
-//         const {rss, heapUsed, heapTotal} = process.memoryUsage()
-//         console.log(`*After Garbage collection running, rss: { ${numeral(rss).format('0.0 ib')} }, heapUsed: { ${numeral(heapUsed).format('0.0 ib')} }, heapTotal: { ${numeral(heapTotal).format('0.0 ib')} }`)
-//
-//         let totalmem = os.totalmem()
-//         let freemem = os.freemem()
-//         let memory_usage_perc = Number((100 - (freemem / totalmem) * 100).toFixed(2))
-//
-//         console.log(`Memory usage: { ${memory_usage_perc} }`)
-//
-//
-//         scheduleGc()
-//     }, 1800000) // 30min
-// }
-//
-// scheduleGc()
+function scheduleGc() {
+    if (!global.gc) {
+        console.log('Garbage collection is not exposed');
+        return
+    }
+
+    setTimeout(() => {
+
+        const memoryHeapUsed = process.memoryUsage().heapUsed
+        const memoryHeapTotal = process.memoryUsage().heapTotal
+        const memoryRss = process.memoryUsage().rss
+        console.log(`Before Garbage collection running, rss: { ${numeral(memoryRss).format('0.0 ib')} }, heapUsed  { ${numeral(memoryHeapUsed).format('0.0 ib')} }, heapTotal: { ${numeral(memoryHeapTotal).format('0.0 ib')} }`)
+
+        global.gc();
+
+        const {rss, heapUsed, heapTotal} = process.memoryUsage()
+        console.log(`*After Garbage collection running, rss: { ${numeral(rss).format('0.0 ib')} }, heapUsed: { ${numeral(heapUsed).format('0.0 ib')} }, heapTotal: { ${numeral(heapTotal).format('0.0 ib')} }`)
+
+        let totalmem = os.totalmem()
+        let freemem = os.freemem()
+        let memory_usage_perc = Number((100 - (freemem / totalmem) * 100).toFixed(2))
+
+        console.log(`Memory usage: { ${memory_usage_perc} }`)
+
+
+        scheduleGc()
+    }, 1800000) // 30min
+}
+
+scheduleGc()
 
 
 setInterval(function () {
@@ -210,14 +205,6 @@ const recipeUpdateOld = async () => {
         // console.log(`Data in DB does not change,  time ${currentTime()}`)
     }
 
-    recipeCache = null
-    recipeDataDb = null
-
-    sizeOfDbMaps = null
-    sizeOfCacheMaps = null
-    sizeOfDbRecipe = null
-    sizeOfCacheRecipe = null
-
 }
 
 const recipeUpdate = async () => {
@@ -264,9 +251,6 @@ const recipeUpdate = async () => {
     const {rss, heapUsed, heapTotal} = process.memoryUsage()
     console.log(`* Memory rss: { ${numeral(rss).format('0.0 ib')} }, heapUsed: { ${numeral(heapUsed).format('0.0 ib')} }, heapTotal: { ${numeral(heapTotal).format('0.0 ib')} }`)
 
-    recipeDataDb = null
-    sizeOfDbMaps = null
-    sizeOfDbRecipe = null
 
 }
 
