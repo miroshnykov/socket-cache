@@ -143,11 +143,13 @@ function scheduleGc() {
 scheduleGc()
 
 
-setInterval(function () {
+setInterval(() => {
+    if (config.env === 'development') return
     metrics.sendMetricsSystem()
 }, config.influxdb.intervalSystem)
 
-setInterval(function () {
+setInterval(() => {
+    if (config.env === 'development') return
     metrics.sendMetricsDisk()
 }, config.influxdb.intervalDisk)
 
