@@ -36,7 +36,6 @@ const LIMIT_CLIENTS = 30
 let {hash} = require('./lib/hash')
 let clients = []
 
-io.sockets.setMaxListeners(0)
 
 io.on('connection', async (socket) => {
     console.log(`\nFlow Rotator instance connected, socket.id:{ ${socket.id} }`);
@@ -101,8 +100,13 @@ io.on('connection', async (socket) => {
 })
 
 io.on('connect', async (socket) => {
+    metrics.setStartMetric({
+        route: 'connect',
+        method: 'GET'
+    })
     console.log(`Connect ${socket.id}, Clients: ${JSON.stringify(clients)} `);
     console.log(`Count of clients: ${clients.length} limit 30`)
+    metrics.sendMetricsRequest(200)
 })
 
 server.listen({port: config.port}, () =>
@@ -274,6 +278,11 @@ setInterval(async () => {
 // run once, first setup to redis from DB
 setTimeout(async () => {
 
+    metrics.setStartMetric({
+        route: 'firstSetRedisLocal',
+        method: 'GET'
+    })
+
     let recipeCache = await getDataCache('recipe') || []
     console.log('Redis count:', Object.keys(recipeCache).length)
     if (Object.keys(recipeCache).length === 0) {
@@ -284,7 +293,8 @@ setTimeout(async () => {
         await setDataCache('recipe', recipeDataDb)
     }
 
-    recipeCache = null
+    metrics.sendMetricsRequest(200)
+    // recipeCache = null
 }, 3000)
 
 const waitFor = delay => new Promise(resolve => setTimeout(resolve, delay))
