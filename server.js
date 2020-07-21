@@ -140,7 +140,7 @@ function scheduleGc() {
     }, 300000) // 5min
 }
 
-scheduleGc()
+// scheduleGc()
 
 
 setInterval(() => {
