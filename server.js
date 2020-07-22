@@ -273,7 +273,7 @@ setInterval(async () => {
     //
     // checksumDbRedis = null
     // checksumDb = null
-}, 420000) // 7 min
+}, 60000) // 1 min
 
 // run once, first setup to redis from DB
 setTimeout(async () => {
