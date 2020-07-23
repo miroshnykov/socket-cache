@@ -178,32 +178,30 @@ const recipeUpdateOld = async () => {
         || sizeOfCacheRecipe !== sizeOfDbRecipe
     ) {
 
-        console.log(`*** size Of DB Maps:     { ${sizeOfDbMaps} }`)
-        console.log(`*** size Of DB Recipe:   { ${sizeOfDbRecipe} }`)
+        console.log(`*** size Of DB Maps:   { ${sizeOfDbMaps || 0} }, Recipe{ ${sizeOfDbRecipe || 0} }`)
 
-        console.log(`\n*** size Of Cache Maps:   { ${sizeOfCacheMaps || 0} }`)
-        console.log(`*** size Of Cache Recipe: { ${sizeOfCacheRecipe || 0} }`)
+        console.log(`*** size Of Cache Maps:{ ${sizeOfCacheMaps || 0} }, Recipe:{ ${sizeOfCacheRecipe || 0} }`)
 
         // if (JSON.stringify(recipeDataDb.maps) !== JSON.stringify(recipeCache.maps)) {
-        console.log(`\nrecipe maps was changed in DB:${JSON.stringify(Object.keys(recipeDataDb.maps))}, send to Flow Rotator`)
+        // console.log(`\nrecipe maps was changed in DB:${JSON.stringify(Object.keys(recipeDataDb.maps))}, send to Flow Rotator`)
 
 
-        console.log(`  Count: 
-                landing_pages:{ ${recipeDataDb.maps.landing_pages.length} }
-                affiliate_websites:{ ${Object.keys(recipeDataDb.maps.affiliate_websites).length} }
-                c_group_segment:{ ${Object.keys(recipeDataDb.maps.c_group_segment).length} }
-                c_group:{ ${Object.keys(recipeDataDb.maps.c_group).length} }
-                adUnits:{ ${Object.keys(recipeDataDb.maps.adUnits).length} }
-                segments:{ ${Object.keys(recipeDataDb.maps.segments).length} }
-                aff_info:{ ${Object.keys(recipeDataDb.maps.aff_info).length} }
-                campaigns:{ ${Object.keys(recipeDataDb.maps.campaigns).length} }
-                dimensions:{ ${Object.keys(recipeDataDb.maps.dimensions).length} }
-                smart_ad:{ ${Object.keys(recipeDataDb.maps.smart_ad).length} }
-                recipeDb:{ ${recipeDataDb.recipe.length} }`
-        )
+        // console.log(`  Count:
+        //         landing_pages:{ ${recipeDataDb.maps.landing_pages.length} }
+        //         affiliate_websites:{ ${Object.keys(recipeDataDb.maps.affiliate_websites).length} }
+        //         c_group_segment:{ ${Object.keys(recipeDataDb.maps.c_group_segment).length} }
+        //         c_group:{ ${Object.keys(recipeDataDb.maps.c_group).length} }
+        //         adUnits:{ ${Object.keys(recipeDataDb.maps.adUnits).length} }
+        //         segments:{ ${Object.keys(recipeDataDb.maps.segments).length} }
+        //         aff_info:{ ${Object.keys(recipeDataDb.maps.aff_info).length} }
+        //         campaigns:{ ${Object.keys(recipeDataDb.maps.campaigns).length} }
+        //         dimensions:{ ${Object.keys(recipeDataDb.maps.dimensions).length} }
+        //         smart_ad:{ ${Object.keys(recipeDataDb.maps.smart_ad).length} }
+        //         recipeDb:{ ${recipeDataDb.recipe.length} }`
+        // )
         // console.log(`\nrecipe was changed in DB:${JSON.stringify(Object.entries(recipeDataDb.recipe).length)}, send to Flow Rotator`)
         recipeDataDb.hash = hash()
-        console.log(`Hash:${recipeDataDb.hash}`)
+        // console.log(`Hash:${recipeDataDb.hash}`)
         await setDataCache('recipe', recipeDataDb)
         metrics.sendMetricsRequest(200)
 
