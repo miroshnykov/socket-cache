@@ -2,6 +2,8 @@ let config = {};
 
 config.port = 8091
 
+config.env = process.env.NODE_ENV || `production`
+
 config.db = {
     adcenter: {
         host: '',
