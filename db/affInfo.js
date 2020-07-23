@@ -6,7 +6,7 @@ const affInfo = async () => {
     try {
         let result = await dbMysql.query(` 
             SELECT aff.id                                        AS id, 
-                   Concat_ws("", aff.first_name, aff.last_name) AS affiliate_name, 
+                   Concat_ws(" ", aff.first_name, aff.last_name) AS affiliate_name, 
                    aff.affiliate_type                            AS affiliate_type, 
                    aff.status                                    AS status, 
                    aff.account_mgr_id                            AS account_mger_id, 
