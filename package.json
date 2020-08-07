@@ -4,7 +4,7 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "start": "node --expose-gc server.js --conf=/home/conf/config.js"
+    "start": "node --expose-gc server.js --conf=/run/secrets/traffic-cache.js"
   },
   "author": "",
   "license": "ISC",
