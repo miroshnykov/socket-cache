@@ -62,7 +62,7 @@ config.flowRotator = {
 
 config.influxdb = {
     host: 'https://influx.surge.systems/influxdb',
-    project: 'traffic_cache',
+    project: 'traffic-cache',
     intervalRequest: 10, // batch post to influxdb when queue length gte 100
     intervalSystem: 30000, // 30000 ms = 30 s
     intervalDisk: 60000 // 300000 ms = 5 min
