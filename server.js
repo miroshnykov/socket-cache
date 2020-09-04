@@ -41,49 +41,43 @@ io.on('connection', async (socket) => {
     console.log(`\nFlow Rotator instance connected, socket.id:{ ${socket.id} }`);
 
     socket.on('disconnect', () => {
-        metrics.setStartMetric({
-            route: 'disconnect',
-            method: 'GET'
-        })
         clients.splice(clients.indexOf(socket.id, 1))
         console.log(`disconnect ${socket.id}, Count of client: ${clients.length} `);
         console.log(`disconnect clients:`, clients);
-        metrics.sendMetricsRequest(200)
+        metrics.influxdb(200, `disconnect`)
     })
 
     socket.on('checkHash', async (hashFr) => {
-        let recipeCache = await getDataCache('recipe') || []
-        if (recipeCache.length === 0) {
-            console.log('checkHash recipeCache is NULL')
-            return
-        }
-        if (recipeCache.hash === hashFr) {
-            // console.log(`hash the same, socketId  { ${socket.id} } `)
-            return
-        }
-        metrics.setStartMetric({
-            route: 'differentHash',
-            method: 'GET'
-        })
+        try {
+            let recipeCache = await getDataCache('recipe') || []
+            if (recipeCache.length === 0) {
+                console.log('checkHash recipeCache is NULL')
+                return
+            }
+            if (recipeCache.hash === hashFr) {
+                // console.log(`hash the same, socketId  { ${socket.id} } `)
+                return
+            }
 
-        console.log(`Hash is different, send to socket id { ${socket.id} }, Count of client: ${clients.length}, recipeCacheOrigin:{ ${recipeCache.hash} }, FR hash:{ ${hashFr} }`)
-        io.to(socket.id).emit("recipeCache", recipeCache)
+            console.log(`Hash is different, send to socket id { ${socket.id} }, Count of client: ${clients.length}, recipeCacheOrigin:{ ${recipeCache.hash} }, FR hash:{ ${hashFr} }`)
+            io.to(socket.id).emit("recipeCache", recipeCache)
 
-        metrics.sendMetricsRequest(200)
+            metrics.influxdb(200, `differentHash`)
+        } catch (e) {
+            metrics.influxdb(500, `differentHashError`)
+        }
+
     })
 
     if (!clients.includes(socket.id)) {
 
         await waitFor(6000)
-        metrics.setStartMetric({
-            route: 'newClientSentRecipe',
-            method: 'GET'
-        })
 
         if (clients.length < LIMIT_CLIENTS) {
             clients.push(socket.id)
             console.log(`Count of clients: ${clients.length} limit ${LIMIT_CLIENTS}`)
             console.log(`New client just connected: ${socket.id} `)
+            metrics.influxdb(200, `clientsCount-${clients.length}`)
             // return
             let recipeCache = await getDataCache('recipe') || []
             if (recipeCache.length === 0) {
@@ -92,7 +86,7 @@ io.on('connection', async (socket) => {
             }
 
             console.log(`Send recipe to new client with hash:{ ${recipeCache.hash} }`)
-            metrics.sendMetricsRequest(200)
+            metrics.influxdb(200, `newClientSentRecipe`)
             io.to(socket.id).emit("recipeCache", recipeCache)
         }
     }
@@ -100,18 +94,16 @@ io.on('connection', async (socket) => {
 })
 
 io.on('connect', async (socket) => {
-    metrics.setStartMetric({
-        route: 'connect',
-        method: 'GET'
-    })
     console.log(`Connect ${socket.id}, Clients: ${JSON.stringify(clients)} `);
     console.log(`Count of clients: ${clients.length} limit 30`)
-    metrics.sendMetricsRequest(200)
+    metrics.influxdb(200, `clientsCount-${clients.length}`)
 })
 
-server.listen({port: config.port}, () =>
+server.listen({port: config.port}, () => {
+    metrics.influxdb(200, `serveReady`)
     console.log(`\n🚀\x1b[35m Server ready at http://localhost:${config.port} \x1b[0m \n`)
-)
+})
+
 
 const numeral = require('numeral')
 
@@ -158,64 +150,65 @@ setInterval(() => {
 }, config.influxdb.intervalDisk)
 
 const recipeUpdateOld = async () => {
-    metrics.setStartMetric({
-        route: 'recipeCacheChanged',
-        method: 'GET'
-    })
-
-    let recipeCache = await getDataCache('recipe') || []
-    let recipeDataDb = await recipeDb()
-
-    let sizeOfDbMaps = await memorySizeOf(recipeDataDb.maps)
-    let sizeOfDbRecipe = await memorySizeOf(recipeDataDb.recipe)
 
 
-    let sizeOfCacheMaps = await memorySizeOf(recipeCache.maps)
-    let sizeOfCacheRecipe = await memorySizeOf(recipeCache.recipe)
+    try {
+        let recipeCache = await getDataCache('recipe') || []
+        let recipeDataDb = await recipeDb()
 
-    // if (JSON.stringify(recipeDataDb.maps) !== JSON.stringify(recipeCache.maps)) {
-    if (sizeOfCacheMaps !== sizeOfDbMaps
-        || sizeOfCacheRecipe !== sizeOfDbRecipe
-    ) {
+        let sizeOfDbMaps = await memorySizeOf(recipeDataDb.maps)
+        let sizeOfDbRecipe = await memorySizeOf(recipeDataDb.recipe)
 
-        console.log(`*** size Of DB Maps:   { ${sizeOfDbMaps || 0} }, Recipe{ ${sizeOfDbRecipe || 0} }`)
 
-        console.log(`*** size Of Cache Maps:{ ${sizeOfCacheMaps || 0} }, Recipe:{ ${sizeOfCacheRecipe || 0} }`)
+        let sizeOfCacheMaps = await memorySizeOf(recipeCache.maps)
+        let sizeOfCacheRecipe = await memorySizeOf(recipeCache.recipe)
 
         // if (JSON.stringify(recipeDataDb.maps) !== JSON.stringify(recipeCache.maps)) {
-        // console.log(`\nrecipe maps was changed in DB:${JSON.stringify(Object.keys(recipeDataDb.maps))}, send to Flow Rotator`)
+        if (sizeOfCacheMaps !== sizeOfDbMaps
+            || sizeOfCacheRecipe !== sizeOfDbRecipe
+        ) {
+
+            metrics.influxdb(200, `sizeOfDbMaps-${sizeOfDbMaps}`)
+            metrics.influxdb(200, `sizeOfDbRecipe-${sizeOfDbRecipe}`)
+
+            console.log(`*** size Of DB Maps:   { ${sizeOfDbMaps || 0} }, Recipe{ ${sizeOfDbRecipe || 0} }`)
+
+            console.log(`*** size Of Cache Maps:{ ${sizeOfCacheMaps || 0} }, Recipe:{ ${sizeOfCacheRecipe || 0} }`)
+
+            // if (JSON.stringify(recipeDataDb.maps) !== JSON.stringify(recipeCache.maps)) {
+            // console.log(`\nrecipe maps was changed in DB:${JSON.stringify(Object.keys(recipeDataDb.maps))}, send to Flow Rotator`)
 
 
-        // console.log(`  Count:
-        //         landing_pages:{ ${recipeDataDb.maps.landing_pages.length} }
-        //         affiliate_websites:{ ${Object.keys(recipeDataDb.maps.affiliate_websites).length} }
-        //         c_group_segment:{ ${Object.keys(recipeDataDb.maps.c_group_segment).length} }
-        //         c_group:{ ${Object.keys(recipeDataDb.maps.c_group).length} }
-        //         adUnits:{ ${Object.keys(recipeDataDb.maps.adUnits).length} }
-        //         segments:{ ${Object.keys(recipeDataDb.maps.segments).length} }
-        //         aff_info:{ ${Object.keys(recipeDataDb.maps.aff_info).length} }
-        //         campaigns:{ ${Object.keys(recipeDataDb.maps.campaigns).length} }
-        //         dimensions:{ ${Object.keys(recipeDataDb.maps.dimensions).length} }
-        //         smart_ad:{ ${Object.keys(recipeDataDb.maps.smart_ad).length} }
-        //         recipeDb:{ ${recipeDataDb.recipe.length} }`
-        // )
-        // console.log(`\nrecipe was changed in DB:${JSON.stringify(Object.entries(recipeDataDb.recipe).length)}, send to Flow Rotator`)
-        recipeDataDb.hash = hash()
-        // console.log(`Hash:${recipeDataDb.hash}`)
-        await setDataCache('recipe', recipeDataDb)
-        metrics.sendMetricsRequest(200)
+            // console.log(`  Count:
+            //         landing_pages:{ ${recipeDataDb.maps.landing_pages.length} }
+            //         affiliate_websites:{ ${Object.keys(recipeDataDb.maps.affiliate_websites).length} }
+            //         c_group_segment:{ ${Object.keys(recipeDataDb.maps.c_group_segment).length} }
+            //         c_group:{ ${Object.keys(recipeDataDb.maps.c_group).length} }
+            //         adUnits:{ ${Object.keys(recipeDataDb.maps.adUnits).length} }
+            //         segments:{ ${Object.keys(recipeDataDb.maps.segments).length} }
+            //         aff_info:{ ${Object.keys(recipeDataDb.maps.aff_info).length} }
+            //         campaigns:{ ${Object.keys(recipeDataDb.maps.campaigns).length} }
+            //         dimensions:{ ${Object.keys(recipeDataDb.maps.dimensions).length} }
+            //         smart_ad:{ ${Object.keys(recipeDataDb.maps.smart_ad).length} }
+            //         recipeDb:{ ${recipeDataDb.recipe.length} }`
+            // )
+            // console.log(`\nrecipe was changed in DB:${JSON.stringify(Object.entries(recipeDataDb.recipe).length)}, send to Flow Rotator`)
+            recipeDataDb.hash = hash()
+            // console.log(`Hash:${recipeDataDb.hash}`)
+            await setDataCache('recipe', recipeDataDb)
+            metrics.influxdb(200, `recipeCacheChanged`)
 
-    } else {
-        // console.log(`Data in DB does not change,  time ${currentTime()}`)
+        } else {
+            // console.log(`Data in DB does not change,  time ${currentTime()}`)
+        }
+    } catch (e) {
+        metrics.influxdb(500, `recipeCacheChangedError`)
     }
+
 
 }
 
 const recipeUpdate = async () => {
-    metrics.setStartMetric({
-        route: 'recipeCacheChanged',
-        method: 'GET'
-    })
 
     let recipeDataDb = await recipeDb()
 
@@ -243,7 +236,7 @@ const recipeUpdate = async () => {
     recipeDataDb.hash = hash()
     console.log(`Hash:${recipeDataDb.hash}`)
     await setDataCache('recipe', recipeDataDb)
-    metrics.sendMetricsRequest(200)
+    metrics.influxdb(200, `recipeCacheChanged`)
 
 
     let totalmem = os.totalmem()
@@ -276,22 +269,23 @@ setInterval(async () => {
 // run once, first setup to redis from DB
 setTimeout(async () => {
 
-    metrics.setStartMetric({
-        route: 'firstSetRedisLocal',
-        method: 'GET'
-    })
 
-    let recipeCache = await getDataCache('recipe') || []
-    console.log('Redis count:', Object.keys(recipeCache).length)
-    if (Object.keys(recipeCache).length === 0) {
+    try {
+        let recipeCache = await getDataCache('recipe') || []
+        console.log('Redis count:', Object.keys(recipeCache).length)
+        if (Object.keys(recipeCache).length === 0) {
 
-        let recipeDataDb = await recipeDb()
-        recipeDataDb.hash = hash()
-        console.log(`Redis is empty, set from DB with hash: { ${recipeDataDb.hash} }`)
-        await setDataCache('recipe', recipeDataDb)
+            let recipeDataDb = await recipeDb()
+            recipeDataDb.hash = hash()
+            console.log(`Redis is empty, set from DB with hash: { ${recipeDataDb.hash} }`)
+            await setDataCache('recipe', recipeDataDb)
+        }
+
+        metrics.influxdb(200, `firstSetRedisLocal`)
+    } catch (e) {
+        metrics.influxdb(500, `firstSetRedisLocalError`)
     }
 
-    metrics.sendMetricsRequest(200)
     // recipeCache = null
 }, 3000)
 
