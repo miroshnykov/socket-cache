@@ -6,7 +6,7 @@ const app = express()
 const server = http.createServer(app);
 const io = socketIO(server)
 const {getDataCache, setDataCache} = require('./lib/redis')
-const {memorySizeOf,memorySizeOfBite} = require('./lib/helper')
+const {memorySizeOf, memorySizeOfBite} = require('./lib/helper')
 const {recipeDb} = require('./lib/recipeData')
 const {checksum} = require('./db/checksum')
 const metrics = require('./lib/metrics')
@@ -145,8 +145,6 @@ setInterval(async () => {
     let recipeCache = await getDataCache('recipe') || []
     let sizeOfCacheMaps = await memorySizeOfBite(recipeCache.maps)
     let sizeOfCacheRecipe = await memorySizeOfBite(recipeCache.recipe)
-    console.log('sizeOfCacheMaps:',sizeOfCacheMaps)
-    console.log('sizeOfCacheRecipe:',sizeOfCacheRecipe)
     metrics.sendMetricsSystem(sizeOfCacheMaps, sizeOfCacheRecipe)
 }, config.influxdb.intervalSystem)
 
