@@ -6,7 +6,7 @@ const app = express()
 const server = http.createServer(app);
 const io = socketIO(server)
 const {getDataCache, setDataCache} = require('./lib/redis')
-const {memorySizeOf} = require('./lib/helper')
+const {memorySizeOf,memorySizeOfBite} = require('./lib/helper')
 const {recipeDb} = require('./lib/recipeData')
 const {checksum} = require('./db/checksum')
 const metrics = require('./lib/metrics')
@@ -139,15 +139,21 @@ function scheduleGc() {
 // scheduleGc()
 
 
-setInterval(() => {
+setInterval(async () => {
     if (config.env === 'development') return
-    metrics.sendMetricsSystem()
+
+    let recipeCache = await getDataCache('recipe') || []
+    let sizeOfCacheMaps = await memorySizeOfBite(recipeCache.maps)
+    let sizeOfCacheRecipe = await memorySizeOfBite(recipeCache.recipe)
+    console.log('sizeOfCacheMaps:',sizeOfCacheMaps)
+    console.log('sizeOfCacheRecipe:',sizeOfCacheRecipe)
+    metrics.sendMetricsSystem(sizeOfCacheMaps, sizeOfCacheRecipe)
 }, config.influxdb.intervalSystem)
 
-setInterval(() => {
-    if (config.env === 'development') return
-    metrics.sendMetricsDisk()
-}, config.influxdb.intervalDisk)
+// setInterval(() => {
+//     if (config.env === 'development') return
+//     metrics.sendMetricsDisk()
+// }, config.influxdb.intervalDisk)
 
 const recipeUpdateOld = async () => {
 
